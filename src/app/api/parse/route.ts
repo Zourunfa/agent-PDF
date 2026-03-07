@@ -137,6 +137,9 @@ async function parsePDFAsync(pdfId: string) {
 
 async function parsePDFAsyncInternal(pdfId: string) {
   try {
+    const overallStartTime = Date.now();
+    console.log(`[Parse API] ⏱️ Overall timer started at ${new Date().toISOString()}`);
+    
     const fs = await import('fs/promises');
     const path = await import('path');
     const os = await import('os');
@@ -151,9 +154,10 @@ async function parsePDFAsyncInternal(pdfId: string) {
     console.log(`[Parse API] Reading PDF from: ${filePath}`);
 
     // Check if file exists
+    const fileCheckStart = Date.now();
     try {
       await fs.access(filePath);
-      console.log(`[Parse API] ✓ File exists`);
+      console.log(`[Parse API] ✓ File exists (${Date.now() - fileCheckStart}ms)`);
     } catch {
       console.error(`[Parse API] ✗ PDF file not found: ${filePath}`);
       parsedPDFs.set(pdfId, {
@@ -166,9 +170,11 @@ async function parsePDFAsyncInternal(pdfId: string) {
     }
 
     // Parse PDF
+    const readStart = Date.now();
     console.log(`[Parse API] → Reading file buffer...`);
     const buffer = await fs.readFile(filePath);
-    console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes`);
+    const readTime = Date.now() - readStart;
+    console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes (read in ${readTime}ms)`);
     console.log(`[Parse API] ✓ Buffer is valid: ${Buffer.isBuffer(buffer)}`);
 
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
@@ -185,6 +191,7 @@ async function parsePDFAsyncInternal(pdfId: string) {
     const parseResult = await parseWithTimeout;
     const parseTime = Date.now() - parseStartTime;
     console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
+    console.log(`[Parse API] ⏱️ Breakdown: File read ${readTime}ms + Parse ${parseTime}ms = ${readTime + parseTime}ms total`);
     
     console.log(`[Parse API] Parse result:`, {
       textLength: parseResult.text.length,
@@ -227,14 +234,17 @@ async function parsePDFAsyncInternal(pdfId: string) {
     }
 
     // Split into chunks and create vector store
+    const chunkStart = Date.now();
     console.log(`[Parse API] Splitting text into chunks...`);
     const chunks = await splitTextWithMetadata(
       text,
       { pdfId, source: "pdf", pageCount: pages }
     );
-    console.log(`[Parse API] ✓ Created ${chunks.length} chunks`);
+    const chunkTime = Date.now() - chunkStart;
+    console.log(`[Parse API] ✓ Created ${chunks.length} chunks (${chunkTime}ms)`);
     console.log(`[Parse API] First chunk preview: ${chunks[0]?.content.substring(0, 100)}...`);
 
+    const vectorStart = Date.now();
     console.log(`[Parse API] Creating vector store...`);
     console.log(`[Parse API] API Key configured: ${!!process.env.ALIBABA_API_KEY || !!process.env.QWEN_API_KEY}`);
 
@@ -242,14 +252,23 @@ async function parsePDFAsyncInternal(pdfId: string) {
       // Lazy load vector store functions
       const { createVectorStoreFromChunks, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
       await createVectorStoreFromChunks(pdfId, chunks);
-      console.log(`[Parse API] ✓ Vector store created successfully`);
+      const vectorTime = Date.now() - vectorStart;
+      console.log(`[Parse API] ✓ Vector store created successfully (${vectorTime}ms)`);
       console.log(`[Parse API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
     } catch (vectorError) {
-      console.error(`[Parse API] ✗ Vector store creation failed:`, vectorError);
+      const vectorTime = Date.now() - vectorStart;
+      console.error(`[Parse API] ✗ Vector store creation failed after ${vectorTime}ms:`, vectorError);
       // Continue anyway - text is parsed, just vector search won't work
     }
 
+    const totalTime = Date.now() - overallStartTime;
     console.log(`[Parse API] ✓ PDF parsed successfully: ${pdfId}, ${pages} pages, ${chunks.length} chunks`);
+    console.log(`[Parse API] ⏱️ TOTAL TIME BREAKDOWN:`);
+    console.log(`[Parse API]   - File read: ${readTime}ms`);
+    console.log(`[Parse API]   - PDF parse: ${parseTime}ms`);
+    console.log(`[Parse API]   - Text chunking: ${chunkTime}ms`);
+    console.log(`[Parse API]   - Vector store: ${Date.now() - vectorStart}ms`);
+    console.log(`[Parse API]   - TOTAL: ${totalTime}ms`);
     console.log(`[Parse API] ============================================================`);
   } catch (error) {
     console.error("[Parse API] ✗ Async parse error:", error);
