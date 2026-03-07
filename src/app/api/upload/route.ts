@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Store PDF file in memory storage
-    addPDFFile(pdfFile);
+    await addPDFFile(pdfFile);
 
     return NextResponse.json({
       success: true,
