@@ -5,9 +5,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import os from "os";
 
-// Use relative path that works on both Windows and Linux
-const TEMP_DIR = path.join(process.cwd(), "tmp", "pdf-chat");
+// Use /tmp for serverless environments (Vercel, AWS Lambda)
+// Falls back to OS temp directory if /tmp doesn't exist
+const TEMP_DIR = process.env.VERCEL 
+  ? path.join('/tmp', 'pdf-chat')
+  : path.join(os.tmpdir(), 'pdf-chat');
 
 /**
  * Ensure temp directory exists
