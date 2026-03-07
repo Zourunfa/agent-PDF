@@ -3,9 +3,14 @@
  */
 
 import { NextResponse } from "next/server";
-import { getVectorStoreIds } from "@/lib/langchain/vector-store";
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET() {
+  // Lazy load vector store to avoid build-time execution
+  const { getVectorStoreIds } = await import("@/lib/langchain/vector-store");
   const vectorStoreIds = getVectorStoreIds();
   
   return NextResponse.json({

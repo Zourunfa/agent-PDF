@@ -5,9 +5,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parsePDF, isValidPDFText } from "@/lib/pdf/parser";
 import { splitTextWithMetadata } from "@/lib/pdf/text-splitter";
-import { createVectorStoreFromChunks, getVectorStoreIds } from "@/lib/langchain/vector-store";
 import { ParseStatus } from "@/types/pdf";
 import { formatErrorResponse } from "@/lib/utils/errors";
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Store parsed PDFs in memory (in production, use a database)
 const parsedPDFs = new Map<string, {
@@ -18,6 +21,8 @@ const parsedPDFs = new Map<string, {
 }>();
 
 export async function POST(req: NextRequest) {
+  // Lazy load vector store to avoid build-time execution
+  const { createVectorStoreFromChunks, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
   try {
     const body = await req.json();
     const { pdfId } = body;
