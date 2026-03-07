@@ -30,11 +30,11 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
     console.log("[Parser] ✓ PDFParser imported");
 
     return new Promise(async (resolve, reject) => {
-      // Strict 5-second timeout
+      // Increase timeout to 6 seconds for Vercel
       const timeout = setTimeout(() => {
-        console.error("[Parser] ✗ Timeout after 5 seconds");
-        reject(new Error("PDF 解析超时 - 文件可能过于复杂或损坏"));
-      }, 5000);
+        console.error("[Parser] ✗ Timeout after 6 seconds");
+        reject(new Error("PDF 解析超时 - 文件可能过于复杂"));
+      }, 6000);
 
       const pdfParser = new PDFParser(null, true);
 
