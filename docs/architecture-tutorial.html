@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF AI 聊天应用 - 技术架构教程</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Section */
+        section {
+            margin: 60px 0;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        section:nth-child(2) { animation-delay: 0.1s; }
+        section:nth-child(3) { animation-delay: 0.2s; }
+        section:nth-child(4) { animation-delay: 0.3s; }
+        section:nth-child(5) { animation-delay: 0.4s; }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 30px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            border-radius: 2px;
+        }
+
+        /* Tech Stack Cards */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .tech-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tech-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .tech-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .tech-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .tech-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .tech-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Architecture Diagram */
+        .arch-diagram {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .arch-diagram::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .arch-layer {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .arch-component {
+            background: rgba(30, 41, 59, 0.9);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .arch-component:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .arch-component.active {
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .arch-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .arch-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .arch-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .arch-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Data Flow */
+        .data-flow {
+            position: relative;
+            padding: 40px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+            opacity: 0;
+            animation: slideIn 0.5s ease-out forwards;
+        }
+
+        .flow-step:nth-child(1) { animation-delay: 0.1s; }
+        .flow-step:nth-child(2) { animation-delay: 0.3s; }
+        .flow-step:nth-child(3) { animation-delay: 0.5s; }
+        .flow-step:nth-child(4) { animation-delay: 0.7s; }
+        .flow-step:nth-child(5) { animation-delay: 0.9s; }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .step-content:hover {
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .step-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Flow Line */
+        .flow-line {
+            position: absolute;
+            left: 75px;
+            top: 100px;
+            bottom: 100px;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary), var(--accent));
+            z-index: 0;
+        }
+
+        .flow-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -3px;
+            width: 9px;
+            height: 9px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: flowDown 2s ease-in-out infinite;
+        }
+
+        @keyframes flowDown {
+            0% { top: 0; opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Redis Storage */
+        .redis-visual {
+            background: var(--bg-card);
+            border: 2px solid #dc2626;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .redis-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .redis-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .redis-data {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .redis-key {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .redis-key:hover {
+            background: rgba(220, 38, 38, 0.2);
+            transform: scale(1.05);
+        }
+
+        .redis-key-name {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #fca5a5;
+            margin-bottom: 8px;
+        }
+
+        .redis-key-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Serverless Animation */
+        .serverless-demo {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .serverless-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .serverless-instance {
+            width: 150px;
+            text-align: center;
+        }
+
+        .instance-box {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            position: relative;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .instance-box::after {
+            content: '⚡';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 1rem;
+            animation: flash 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 0 rgba(59, 130, 246, 0.2); }
+        }
+
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .instance-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .redis-cloud {
+            width: 200px;
+            text-align: center;
+        }
+
+        .redis-cloud-box {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'typescript';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .function { color: #d2a8ff; }
+        .comment { color: #8b949e; }
+        .number { color: #79c0ff; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+        }
+
+        .tab.active::after {
+            transform: scaleX(1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .tech-grid { grid-template-columns: 1fr; }
+            .arch-layer { flex-direction: column; }
+            .redis-data { grid-template-columns: 1fr; }
+            .serverless-container { flex-direction: column; }
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary), var(--accent));
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -36px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            border: 2px solid var(--bg-dark);
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .comparison-table tr:hover td {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🚀 PDF AI 聊天应用</h1>
+            <p class="subtitle">基于 Next.js + LangChain + Upstash Redis 的智能文档对话系统技术架构</p>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">10s</div>
+                <div class="stat-label">Vercel 超时限制</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">7天</div>
+                <div class="stat-label">Redis 数据保留</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">TypeScript 严格模式</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">∞</div>
+                <div class="stat-label">无服务器扩展性</div>
+            </div>
+        </div>
+
+        <!-- Tech Stack -->
+        <section>
+            <h2>🛠️ 技术栈</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'frontend')">前端技术</button>
+                <button class="tab" onclick="switchTab(event, 'backend')">后端技术</button>
+                <button class="tab" onclick="switchTab(event, 'ai')">AI & 向量</button>
+                <button class="tab" onclick="switchTab(event, 'storage')">存储 & 部署</button>
+            </div>
+
+            <div id="frontend" class="tab-content active">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <div class="tech-icon">⚛️</div>
+                        <div class="tech-name">Next.js 14</div>
+                        <div class="tech-desc">React 服务端框架，App Router 模式</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🎨</div>
+                        <div class="tech-name">Ant Design</div>
+                        <div class="tech-desc">企业级 UI 组件库</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🔮</div>
+                        <div class="tech-name">Radix UI</div>
+                        <div class="tech-desc">无样式组件库，高度可定制</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🎭</div>
+                        <div class="tech-name">Lucide Icons</div>
+                        <div class="tech-desc">轻量级图标库</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="backend" class="tab-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <div class="tech-icon">📡</div>
+                        <div class="tech-name">API Routes</div>
+                        <div class="tech-desc">Next.js 服务端 API</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">📄</div>
+                        <div class="tech-name">pdf2json</div>
+                        <div class="tech-desc">快速 PDF 解析库</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🔍</div>
+                        <div class="tech-name">tesseract.js</div>
+                        <div class="tech-desc">OCR 文字识别</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">📊</div>
+                        <div class="tech-name">Context API</div>
+                        <div class="tech-desc">React 状态管理</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ai" class="tab-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <div class="tech-icon">🤖</div>
+                        <div class="tech-name">LangChain</div>
+                        <div class="tech-desc">AI 应用开发框架</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🧠</div>
+                        <div class="tech-name">Alibaba Tongyi</div>
+                        <div class="tech-desc">通义千问 AI 模型</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🔢</div>
+                        <div class="tech-name">MemoryVectorStore</div>
+                        <div class="tech-desc">内存向量存储</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">📐</div>
+                        <div class="tech-name">Text Splitter</div>
+                        <div class="tech-desc">智能文本分块</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="storage" class="tab-content">
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <div class="tech-icon">🔴</div>
+                        <div class="tech-name">Upstash Redis</div>
+                        <div class="tech-desc">HTTP API 方式访问 Redis</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">⚡</div>
+                        <div class="tech-name">Vercel</div>
+                        <div class="tech-desc">无服务器部署平台</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">💾</div>
+                        <div class="tech-name">/tmp 存储</div>
+                        <div class="tech-desc">Vercel 临时文件系统</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-icon">🔒</div>
+                        <div class="tech-name">TypeScript</div>
+                        <div class="tech-desc">严格类型检查</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture -->
+        <section>
+            <h2>🏗️ 系统架构</h2>
+
+            <div class="arch-diagram">
+                <div class="arch-layer">
+                    <div class="arch-component">
+                        <div class="arch-icon">👤</div>
+                        <div class="arch-label">用户浏览器</div>
+                        <div class="arch-desc">React UI 组件</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-component active">
+                        <div class="arch-icon">⚡</div>
+                        <div class="arch-label">Vercel Edge</div>
+                        <div class="arch-desc">CDN + 边缘计算</div>
+                    </div>
+                    <div class="arch-arrow">→</div>
+                    <div class="arch-component">
+                        <div class="arch-icon">🔧</div>
+                        <div class="arch-label">API Routes</div>
+                        <div class="arch-desc">Serverless 函数</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Flow -->
+        <section>
+            <h2>📊 数据流程</h2>
+
+            <div class="data-flow">
+                <div class="flow-line"></div>
+
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">📤 用户上传 PDF</div>
+                        <div class="step-desc">文件被保存到 /tmp 目录，创建 PDF 记录（状态：PENDING）</div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">🔍 PDF 解析</div>
+                        <div class="step-desc">pdf2json 提取文本，失败则使用 OCR 识别</div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">✂️ 文本分块 & 向量化</div>
+                        <div class="step-desc">按语义切分文本，调用 AI API 生成向量嵌入</div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">💾 存储到 Redis</div>
+                        <div class="step-desc">PDF 元数据、文本 chunks、向量 embeddings 全部存储</div>
+                    </div>
+                </div>
+
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <div class="step-title">💬 用户提问</div>
+                        <div class="step-desc">从 Redis 恢复数据，向量搜索，AI 生成回答</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Redis Storage -->
+        <section>
+            <h2>🔴 Redis 数据结构</h2>
+
+            <div class="redis-visual">
+                <div class="redis-title">
+                    <div class="redis-icon">R</div>
+                    <span>Upstash Redis 数据存储</span>
+                </div>
+                <div class="redis-data">
+                    <div class="redis-key">
+                        <div class="redis-key-name">pdf:{id}</div>
+                        <div class="redis-key-desc">PDF 元数据<br/>文件名、页数、状态</div>
+                    </div>
+                    <div class="redis-key">
+                        <div class="redis-key-name">vector:{id}</div>
+                        <div class="redis-key-desc">文本 Chunks<br/>分块后的文本</div>
+                    </div>
+                    <div class="redis-key">
+                        <div class="redis-key-name">vector:{id}:embeddings</div>
+                        <div class="redis-key-desc">向量 Embeddings<br/>避免重新计算</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Serverless -->
+        <section>
+            <h2>⚡ Vercel 无服务器架构</h2>
+
+            <div class="serverless-demo">
+                <div class="serverless-container">
+                    <div class="serverless-instance">
+                        <div class="instance-box">📦</div>
+                        <div class="instance-label">实例 A</div>
+                    </div>
+                    <div class="serverless-instance">
+                        <div class="instance-box">📦</div>
+                        <div class="instance-label">实例 B</div>
+                    </div>
+                    <div class="redis-cloud">
+                        <div class="redis-cloud-box">🔴</div>
+                        <div class="instance-label">Upstash Redis<br/>跨实例共享</div>
+                    </div>
+                    <div class="serverless-instance">
+                        <div class="instance-box">📦</div>
+                        <div class="instance-label">实例 C</div>
+                    </div>
+                </div>
+            </div>
+
+            <p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">
+                每个请求可能在不同的实例上执行，Redis 确保数据共享
+            </p>
+        </section>
+
+        <!-- Code Example -->
+        <section>
+            <h2>💻 核心代码示例</h2>
+
+            <div class="code-block">
+                <pre>
+<span class="comment">// Redis 存储实现</span>
+<span class="keyword">import</span> { Redis } <span class="keyword">from</span> <span class="string">"@upstash/redis"</span>;
+
+<span class="keyword">const</span> redis = <span class="keyword">new</span> <span class="function">Redis</span>({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
+
+<span class="comment">// 存储 PDF 数据（自动序列化）</span>
+<span class="keyword">await</span> redis.<span class="function">set</span>(<span class="string">`pdf:${pdfId}`</span>, pdfData, {
+  ex: <span class="number">60 * 60 * 24 * 7</span> <span class="comment">// 7天过期</span>
+});
+
+<span class="comment">// 获取 PDF 数据（自动反序列化）</span>
+<span class="keyword">const</span> data = <span class="keyword">await</span> redis.<span class="function">get</span>(<span class="string">`pdf:${pdfId}`</span>);
+<span class="comment">// 兼容性处理</span>
+<span class="keyword">const</span> parsed = <span class="keyword">typeof</span> data === <span class="string">'string'</span>
+  ? JSON.<span class="function">parse</span>(data)
+  : data;</pre>
+            </div>
+        </section>
+
+        <!-- Challenges -->
+        <section>
+            <h2>🎯 核心挑战与解决方案</h2>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>挑战</th>
+                        <th>解决方案</th>
+                        <th>实现</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>内存变量不持久</td>
+                        <td>Redis 主存储</td>
+                        <td>所有数据存入 Redis，7天过期</td>
+                    </tr>
+                    <tr>
+                        <td>后台任务不执行</td>
+                        <td>同步解析</td>
+                        <td>在请求中完成整个解析流程</td>
+                    </tr>
+                    <tr>
+                        <td>函数超时限制</td>
+                        <td>多级超时控制</td>
+                        <td>PDF 解析 7秒，OCR 5秒</td>
+                    </tr>
+                    <tr>
+                        <td>向量重新计算</td>
+                        <td>缓存 Embeddings</td>
+                        <td>存储向量到 Redis，恢复时复用</td>
+                    </tr>
+                    <tr>
+                        <td>@vercel/kv 弃用</td>
+                        <td>迁移到 Upstash</td>
+                        <td>支持 Vercel 集成环境变量</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Timeline -->
+        <section>
+            <h2>📅 开发时间线</h2>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="step-title">第 1 天：项目初始化</div>
+                    <div class="step-desc">使用 Spec Kit 创建项目原则和基础结构</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="step-title">第 2 天：核心功能开发</div>
+                    <div class="step-desc">实现 PDF 上传、解析、向量存储功能</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="step-title">第 3 天：AI 对话集成</div>
+                    <div class="step-desc">集成 LangChain 和 Qwen 模型</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="step-title">第 4 天：Redis 持久化</div>
+                    <div class="step-desc">解决无服务器环境数据持久化问题</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="step-title">第 5 天：优化与部署</div>
+                    <div class="step-desc">性能优化、错误处理、Vercel 部署</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>📚 技术文档 | PDF AI 聊天应用 | 2025</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                基于 Spec Kit 规范驱动开发 | Next.js 14 + LangChain + Upstash Redis
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        function switchTab(event, tabId) {
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Show selected tab content
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Add scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.tech-card, .arch-component, .flow-step').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Interactive architecture diagram
+        document.querySelectorAll('.arch-component').forEach(component => {
+            component.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

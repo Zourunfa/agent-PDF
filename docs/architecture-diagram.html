@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-PDF 技术架构图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 50%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Architecture Container */
+        .architecture-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        /* Layer */
+        .layer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .layer:nth-child(1) { animation-delay: 0.1s; }
+        .layer:nth-child(2) { animation-delay: 0.2s; }
+        .layer:nth-child(3) { animation-delay: 0.3s; }
+        .layer:nth-child(4) { animation-delay: 0.4s; }
+        .layer:nth-child(5) { animation-delay: 0.5s; }
+        .layer:nth-child(6) { animation-delay: 0.6s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .layer-label {
+            background: var(--bg-card);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+            margin-bottom: 15px;
+        }
+
+        .layer-content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        /* Component Box */
+        .component {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 25px;
+            min-width: 180px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .component:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .component.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+
+        .component-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .component-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .component-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Component Colors */
+        .component.client { border-color: var(--success); }
+        .component.client:hover { border-color: var(--success); }
+
+        .component.frontend { border-color: var(--accent); }
+        .component.frontend:hover { border-color: var(--accent); }
+
+        .component.api { border-color: var(--primary); }
+        .component.api:hover { border-color: var(--primary); }
+
+        .component.service { border-color: var(--secondary); }
+        .component.service:hover { border-color: var(--secondary); }
+
+        .component.external { border-color: var(--warning); }
+        .component.external:hover { border-color: var(--warning); }
+
+        .component.storage { border-color: var(--danger); }
+        .component.storage:hover { border-color: var(--danger); }
+
+        /* Connection Lines */
+        .connections {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+        }
+
+        .arrow-down {
+            font-size: 2rem;
+            color: var(--accent);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+
+        /* Data Flow */
+        .data-flow {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .data-flow h3 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--accent);
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .flow-step {
+            background: var(--bg-dark);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .flow-arrow {
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+
+        .flow-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        /* Tech Stack Cards */
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+
+        .tech-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .tech-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .tech-card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .tech-card-icon {
+            font-size: 2rem;
+        }
+
+        .tech-card-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .tech-list {
+            list-style: none;
+        }
+
+        .tech-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .tech-list li:last-child {
+            border-bottom: none;
+        }
+
+        .tech-list li::before {
+            content: '•';
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* Detail Panel */
+        .detail-panel {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            display: none;
+            border: 2px solid var(--primary);
+        }
+
+        .detail-panel.active {
+            display: block;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .detail-panel h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .detail-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .detail-item {
+            background: var(--bg-dark);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+        }
+
+        /* API Routes */
+        .api-routes {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .api-routes h3 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary);
+        }
+
+        .api-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .api-item {
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .api-item:hover {
+            border-left-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .api-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+
+        .api-method.get { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .api-method.post { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        .api-method.delete { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        .api-path {
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .api-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 30px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .tab:hover, .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .component { min-width: 140px; padding: 15px; }
+            .component-icon { font-size: 2rem; }
+            .flow-diagram { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid;
+        }
+
+        .legend-color.client { border-color: var(--success); background: rgba(16, 185, 129, 0.2); }
+        .legend-color.frontend { border-color: var(--accent); background: rgba(6, 182, 212, 0.2); }
+        .legend-color.api { border-color: var(--primary); background: rgba(99, 102, 241, 0.2); }
+        .legend-color.service { border-color: var(--secondary); background: rgba(139, 92, 246, 0.2); }
+        .legend-color.external { border-color: var(--warning); background: rgba(245, 158, 11, 0.2); }
+        .legend-color.storage { border-color: var(--danger); background: rgba(239, 68, 68, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ Agent-PDF 技术架构图</h1>
+            <p class="subtitle">基于 Next.js 14 + LangChain + Upstash Redis 的 PDF AI 对话系统</p>
+        </header>
+
+        <!-- View Tabs -->
+        <div class="tabs">
+            <div class="tab active" data-view="layered">分层架构</div>
+            <div class="tab" data-view="flow">数据流图</div>
+            <div class="tab" data-view="tech">技术栈</div>
+            <div class="tab" data-view="api">API 接口</div>
+        </div>
+
+        <!-- Layered Architecture View -->
+        <div class="tab-content active" id="layered">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color client"></div>
+                    <span>客户端</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color frontend"></div>
+                    <span>前端层</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color api"></div>
+                    <span>API 层</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color service"></div>
+                    <span>服务层</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color external"></div>
+                    <span>外部服务</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color storage"></div>
+                    <span>存储层</span>
+                </div>
+            </div>
+
+            <div class="architecture-container">
+                <!-- Layer 1: Client -->
+                <div class="layer">
+                    <div class="layer-label">🌐 客户端层 (Client Layer)</div>
+                    <div class="layer-content">
+                        <div class="component client" data-detail="browser">
+                            <div class="component-icon">🌍</div>
+                            <div class="component-title">Web Browser</div>
+                            <div class="component-desc">Chrome / Edge / Safari</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="connections">
+                    <div class="arrow-down">↓</div>
+                </div>
+
+                <!-- Layer 2: Frontend -->
+                <div class="layer">
+                    <div class="layer-label">⚛️ 前端应用层 (Frontend Layer)</div>
+                    <div class="layer-content">
+                        <div class="component frontend" data-detail="nextjs">
+                            <div class="component-icon">▲</div>
+                            <div class="component-title">Next.js 14</div>
+                            <div class="component-desc">App Router</div>
+                        </div>
+                        <div class="component frontend" data-detail="react">
+                            <div class="component-icon">⚛️</div>
+                            <div class="component-title">React 18</div>
+                            <div class="component-desc">UI Components</div>
+                        </div>
+                        <div class="component frontend" data-detail="typescript">
+                            <div class="component-icon">📘</div>
+                            <div class="component-title">TypeScript</div>
+                            <div class="component-desc">类型安全</div>
+                        </div>
+                        <div class="component frontend" data-detail="tailwind">
+                            <div class="component-icon">🎨</div>
+                            <div class="component-title">Tailwind CSS</div>
+                            <div class="component-desc">样式框架</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="connections">
+                    <div class="arrow-down">↓</div>
+                </div>
+
+                <!-- Layer 3: API -->
+                <div class="layer">
+                    <div class="layer-label">🔌 API 层 (API Layer)</div>
+                    <div class="layer-content">
+                        <div class="component api" data-detail="api-routes">
+                            <div class="component-icon">🛣️</div>
+                            <div class="component-title">API Routes</div>
+                            <div class="component-desc">/app/api/*</div>
+                        </div>
+                        <div class="component api" data-detail="upload-api">
+                            <div class="component-icon">📤</div>
+                            <div class="component-title">Upload API</div>
+                            <div class="component-desc">/api/pdf/upload</div>
+                        </div>
+                        <div class="component api" data-detail="parse-api">
+                            <div class="component-icon">📄</div>
+                            <div class="component-title">Parse API</div>
+                            <div class="component-desc">/api/pdf/parse</div>
+                        </div>
+                        <div class="component api" data-detail="chat-api">
+                            <div class="component-icon">💬</div>
+                            <div class="component-title">Chat API</div>
+                            <div class="component-desc">/api/chat</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="connections">
+                    <div class="arrow-down">↓</div>
+                </div>
+
+                <!-- Layer 4: Services -->
+                <div class="layer">
+                    <div class="layer-label">⚙️ 服务层 (Service Layer)</div>
+                    <div class="layer-content">
+                        <div class="component service" data-detail="pdf-service">
+                            <div class="component-icon">📑</div>
+                            <div class="component-title">PDF Service</div>
+                            <div class="component-desc">pdf-parse</div>
+                        </div>
+                        <div class="component service" data-detail="vector-service">
+                            <div class="component-icon">🔢</div>
+                            <div class="component-title">Vector Store</div>
+                            <div class="component-desc">LangChain Vector</div>
+                        </div>
+                        <div class="component service" data-detail="redis-service">
+                            <div class="component-icon">🗄️</div>
+                            <div class="component-title">Redis Cache</div>
+                            <div class="component-desc">Upstash Client</div>
+                        </div>
+                        <div class="component service" data-detail="ai-service">
+                            <div class="component-icon">🤖</div>
+                            <div class="component-title">AI Service</div>
+                            <div class="component-desc">LangChain + Qwen</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="connections">
+                    <div class="arrow-down">↓</div>
+                </div>
+
+                <!-- Layer 5: External Services -->
+                <div class="layer">
+                    <div class="layer-label">🌐 外部服务 (External Services)</div>
+                    <div class="layer-content">
+                        <div class="component external" data-detail="qwen">
+                            <div class="component-icon">🧠</div>
+                            <div class="component-title">通义千问</div>
+                            <div class="component-desc">阿里云 Qwen</div>
+                        </div>
+                        <div class="component storage" data-detail="upstash">
+                            <div class="component-icon">💾</div>
+                            <div class="component-title">Upstash Redis</div>
+                            <div class="component-desc">云数据库</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Panel -->
+            <div class="detail-panel" id="detail-panel">
+                <h3 id="detail-title">组件详情</h3>
+                <div class="detail-content" id="detail-content">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow View -->
+        <div class="tab-content" id="flow">
+            <div class="data-flow">
+                <h3>📤 PDF 上传流程</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div>🌍 用户</div>
+                        <div class="flow-label">选择 PDF 文件</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>📤 Upload API</div>
+                        <div class="flow-label">验证并保存</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>🗄️ Redis</div>
+                        <div class="flow-label">存储文件信息</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>📑 PDF Service</div>
+                        <div class="flow-label">异步解析</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>✅ 完成</div>
+                        <div class="flow-label">返回 pdfId</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-flow">
+                <h3>💬 AI 对话流程</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div>🌍 用户</div>
+                        <div class="flow-label">发送问题</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>💬 Chat API</div>
+                        <div class="flow-label">接收请求</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>🔢 Vector Store</div>
+                        <div class="flow-label">检索相关内容</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>🧠 通义千问</div>
+                        <div class="flow-label">生成回答</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>✅ 返回</div>
+                        <div class="flow-label">AI 回复</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-flow">
+                <h3>🔄 Redis 数据缓存策略</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div>📄 解析 PDF</div>
+                        <div class="flow-label">提取文本</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>🔢 生成向量</div>
+                        <div class="flow-label">Embeddings</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>💾 存入 Redis</div>
+                        <div class="flow-label">缓存向量</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>⚡ 下次使用</div>
+                        <div class="flow-label">直接读取</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tech Stack View -->
+        <div class="tab-content" id="tech">
+            <div class="tech-stack">
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">⚛️</div>
+                        <div class="tech-card-title">前端框架</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>Next.js 14 (App Router)</li>
+                        <li>React 18</li>
+                        <li>TypeScript 5.x</li>
+                        <li>Tailwind CSS 3.x</li>
+                        <li>React Markdown</li>
+                    </ul>
+                </div>
+
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">🔌</div>
+                        <div class="tech-card-title">后端服务</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>Next.js API Routes</li>
+                        <li>Edge Runtime Support</li>
+                        <li>Server Actions</li>
+                        <li>Route Handlers</li>
+                    </ul>
+                </div>
+
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">🤖</div>
+                        <div class="tech-card-title">AI & 向量</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>LangChain.js</li>
+                        <li>@langchain/community</li>
+                        <li>通义千问 (Qwen)</li>
+                        <li>SavedVectorStore</li>
+                    </ul>
+                </div>
+
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">📑</div>
+                        <div class="tech-card-title">PDF 处理</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>pdf-parse</li>
+                        <li>文件流处理</li>
+                        <li>文本提取优化</li>
+                    </ul>
+                </div>
+
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">💾</div>
+                        <div class="tech-card-title">数据存储</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>@upstash/redis</li>
+                        <li>HTTP API Client</li>
+                        <li>JSON Auto-serialization</li>
+                        <li>向量缓存</li>
+                    </ul>
+                </div>
+
+                <div class="tech-card">
+                    <div class="tech-card-header">
+                        <div class="tech-card-icon">🚀</div>
+                        <div class="tech-card-title">部署平台</div>
+                    </div>
+                    <ul class="tech-list">
+                        <li>Vercel (Serverless)</li>
+                        <li>Edge Functions</li>
+                        <li>环境变量管理</li>
+                        <li>自动 CI/CD</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Routes View -->
+        <div class="tab-content" id="api">
+            <div class="api-routes">
+                <h3>📡 API 接口列表</h3>
+                <div class="api-list">
+                    <div class="api-item">
+                        <div class="api-method post">POST</div>
+                        <div class="api-path">/api/pdf/upload</div>
+                        <div class="api-desc">上传 PDF 文件，验证格式和大小，生成 pdfId</div>
+                    </div>
+
+                    <div class="api-item">
+                        <div class="api-method post">POST</div>
+                        <div class="api-path">/api/pdf/parse</div>
+                        <div class="api-desc">解析 PDF 内容，提取文本，生成向量嵌入</div>
+                    </div>
+
+                    <div class="api-item">
+                        <div class="api-method get">GET</div>
+                        <div class="api-path">/api/pdf/status/[pdfId]</div>
+                        <div class="api-desc">查询 PDF 解析状态（PENDING/Parsing/COMPLETED）</div>
+                    </div>
+
+                    <div class="api-item">
+                        <div class="api-method post">POST</div>
+                        <div class="api-path">/api/chat</div>
+                        <div class="api-desc">基于 PDF 内容的 AI 对话接口</div>
+                    </div>
+
+                    <div class="api-item">
+                        <div class="api-method get">GET</div>
+                        <div class="api-path">/api/redis-check</div>
+                        <div class="api-desc">Redis 连接健康检查接口</div>
+                    </div>
+
+                    <div class="api-item">
+                        <div class="api-method post">POST</div>
+                        <div class="api-path">/api/pdf/delete</div>
+                        <div class="api-desc">删除 PDF 文件及相关缓存数据</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-flow">
+                <h3>🔐 认证与安全</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div>🔒 文件验证</div>
+                        <div class="flow-label">类型检查 + 大小限制</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>🛡️ 环境变量</div>
+                        <div class="flow-label">API Key 保护</div>
+                    </div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-step">
+                        <div>⚡ Rate Limit</div>
+                        <div class="flow-label">请求频率控制</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const view = tab.dataset.view;
+
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Show corresponding content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === view) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Component detail data
+        const componentDetails = {
+            browser: {
+                title: '🌍 Web Browser',
+                content: [
+                    { label: '支持的浏览器', value: 'Chrome, Edge, Firefox, Safari' },
+                    { label: '最低版本', value: 'Chrome 90+, Safari 14+' },
+                    { label: '功能', value: 'PDF 预览、对话界面' }
+                ]
+            },
+            nextjs: {
+                title: '▲ Next.js 14',
+                content: [
+                    { label: '版本', value: '14.x (App Router)' },
+                    { label: '渲染模式', value: 'SSR + Client Components' },
+                    { label: '路由', value: '基于文件系统的路由' },
+                    { label: '特性', value: 'Server Actions, Streaming' }
+                ]
+            },
+            react: {
+                title: '⚛️ React 18',
+                content: [
+                    { label: '版本', value: '18.x' },
+                    { label: '特性', value: 'Concurrent Mode, Suspense' },
+                    { label: '状态管理', value: 'useState, useReducer' }
+                ]
+            },
+            typescript: {
+                title: '📘 TypeScript',
+                content: [
+                    { label: '版本', value: '5.x (Strict Mode)' },
+                    { label: '类型检查', value: '编译时类型安全' },
+                    { label: '配置', value: 'tsconfig.json strict: true' }
+                ]
+            },
+            tailwind: {
+                title: '🎨 Tailwind CSS',
+                content: [
+                    { label: '版本', value: '3.x' },
+                    { label: '设计', value: '实用优先的 CSS 框架' },
+                    { label: '主题', value: '自定义深色主题' }
+                ]
+            },
+            'api-routes': {
+                title: '🛣️ API Routes',
+                content: [
+                    { label: '路径', value: '/app/api/**/route.ts' },
+                    { label: '运行时', value: 'Node.js / Edge' },
+                    { label: '方法', value: 'GET, POST, DELETE' }
+                ]
+            },
+            'upload-api': {
+                title: '📤 Upload API',
+                content: [
+                    { label: '端点', value: 'POST /api/pdf/upload' },
+                    { label: '验证', value: 'PDF 格式, 最大 10MB' },
+                    { label: '返回', value: '{ pdfId, fileName, size }' }
+                ]
+            },
+            'parse-api': {
+                title: '📄 Parse API',
+                content: [
+                    { label: '端点', value: 'POST /api/pdf/parse' },
+                    { label: '功能', value: '提取文本, 生成向量' },
+                    { label: '缓存', value: '向量存入 Redis' }
+                ]
+            },
+            'chat-api': {
+                title: '💬 Chat API',
+                content: [
+                    { label: '端点', value: 'POST /api/chat' },
+                    { label: 'AI 模型', value: '通义千问 Qwen' },
+                    { label: 'RAG', value: '基于 PDF 内容检索增强' }
+                ]
+            },
+            'pdf-service': {
+                title: '📑 PDF Service',
+                content: [
+                    { label: '库', value: 'pdf-parse' },
+                    { label: '功能', value: '文本提取、OCR 支持' },
+                    { label: '优化', value: 'Serverless 同步解析' }
+                ]
+            },
+            'vector-service': {
+                title: '🔢 Vector Store',
+                content: [
+                    { label: '库', value: 'LangChain SavedVectorStore' },
+                    { label: '向量', value: '文本嵌入向量' },
+                    { label: '检索', value: '相似度搜索' }
+                ]
+            },
+            'redis-service': {
+                title: '🗄️ Redis Cache',
+                content: [
+                    { label: '客户端', value: '@upstash/redis' },
+                    { label: '用途', value: 'PDF 数据、向量缓存' },
+                    { label: '连接', value: 'HTTP REST API' }
+                ]
+            },
+            'ai-service': {
+                title: '🤖 AI Service',
+                content: [
+                    { label: '框架', value: 'LangChain.js' },
+                    { label: '模型', value: '阿里云通义千问' },
+                    { label: '模式', value: 'RAG (检索增强生成)' }
+                ]
+            },
+            qwen: {
+                title: '🧠 通义千问 Qwen',
+                content: [
+                    { label: '提供商', value: '阿里云' },
+                    { label: 'API', value: 'DashScope API' },
+                    { label: '用途', value: 'AI 对话、文本生成' }
+                ]
+            },
+            upstash: {
+                title: '💾 Upstash Redis',
+                content: [
+                    { label: '类型', value: '云原生 Redis' },
+                    { label: '连接', value: 'HTTP REST API' },
+                    { label: '数据', value: 'PDF 信息、向量嵌入' },
+                    { label: '优势', value: 'Serverless 友好' }
+                ]
+            }
+        };
+
+        // Component click handler
+        const components = document.querySelectorAll('.component');
+        const detailPanel = document.getElementById('detail-panel');
+        const detailTitle = document.getElementById('detail-title');
+        const detailContent = document.getElementById('detail-content');
+
+        components.forEach(component => {
+            component.addEventListener('click', () => {
+                const detailKey = component.dataset.detail;
+                const detail = componentDetails[detailKey];
+
+                if (detail) {
+                    // Update active state
+                    components.forEach(c => c.classList.remove('active'));
+                    component.classList.add('active');
+
+                    // Update panel
+                    detailTitle.textContent = detail.title;
+                    detailContent.innerHTML = detail.content.map(item => `
+                        <div class="detail-item">
+                            <div class="detail-label">${item.label}</div>
+                            <div class="detail-value">${item.value}</div>
+                        </div>
+                    `).join('');
+
+                    // Show panel
+                    detailPanel.classList.add('active');
+
+                    // Scroll to panel
+                    detailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
