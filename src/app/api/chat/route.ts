@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { chatModel } from "@/lib/langchain/config";
 import { searchSimilarDocuments, getVectorStoreIds } from "@/lib/langchain/vector-store";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { Document as LangChainDocument } from "@langchain/core/documents";
 
 export async function POST(req: NextRequest) {
   const { pdfId, question, conversationId, history } = await req.json();
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
         console.log(`[Chat API] Searching for relevant documents...`);
         console.log(`[Chat API] Available vector stores: ${getVectorStoreIds().join(', ')}`);
 
-        let relevantDocs: Document[] = [];
+        let relevantDocs: LangChainDocument[] = [];
         try {
           relevantDocs = await searchSimilarDocuments(pdfId, question, 4);
           console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
