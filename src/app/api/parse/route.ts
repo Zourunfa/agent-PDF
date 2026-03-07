@@ -21,9 +21,6 @@ const parsedPDFs = new Map<string, {
 }>();
 
 export async function POST(req: NextRequest) {
-  // Lazy load vector store to avoid build-time execution
-  const { createVectorStoreFromChunks, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
-  
   try {
     const body = await req.json();
     const { pdfId } = body;
@@ -133,8 +130,57 @@ async function parsePDFAsync(pdfId: string) {
     console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes`);
 
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
-    const parseResult = await parsePDF(buffer);
-    console.log(`[Parse API] ========== PDF PARSE COMPLETED ==========`);
+    const parseStartTime = Date.now();
+    
+    let parseResult;
+    try {
+      // Add timeout protection (7 seconds to leave buffer for cleanup)
+      const parseTimeout = 7000;
+      console.log(`[Parse API] Starting parse with ${parseTimeout}ms timeout...`);
+      
+      const parsePromise = parsePDF(buffer);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => {
+          console.error(`[Parse API] ✗ Parse timeout after ${parseTimeout}ms`);
+          reject(new Error('PDF parsing timeout'));
+        }, parseTimeout)
+      );
+      
+      parseResult = await Promise.race([parsePromise, timeoutPromise]) as any;
+      const parseTime = Date.now() - parseStartTime;
+      console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
+    } catch (parseError) {
+      const parseTime = Date.now() - parseStartTime;
+      console.error(`[Parse API] ✗ PDF parsing failed after ${parseTime}ms:`, parseError);
+      console.error(`[Parse API] ✗ Error type:`, parseError instanceof Error ? parseError.constructor.name : typeof parseError);
+      console.error(`[Parse API] ✗ Error message:`, parseError instanceof Error ? parseError.message : String(parseError));
+      
+      // If it's a timeout or parsing error, mark as failed but don't throw
+      // This allows the function to complete and save the failure status
+      parsedPDFs.set(pdfId, {
+        textContent: "",
+        pageCount: 0,
+        parseStatus: ParseStatus.FAILED,
+        progress: 0,
+      });
+      
+      // Update PDF file storage
+      try {
+        const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
+        const pdfFile = await getPDFFile(pdfId);
+        if (pdfFile) {
+          pdfFile.parseStatus = ParseStatus.FAILED;
+          await addPDFFile(pdfFile);
+          console.log(`[Parse API] ✓ Marked PDF as FAILED in storage`);
+        }
+      } catch (storageError) {
+        console.error(`[Parse API] ✗ Failed to update storage:`, storageError);
+      }
+      
+      console.log(`[Parse API] ============================================================`);
+      return; // Exit early
+    }
+    
     console.log(`[Parse API] Parse result:`, {
       textLength: parseResult.text.length,
       pages: parseResult.pages,
