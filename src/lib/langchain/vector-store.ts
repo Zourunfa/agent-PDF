@@ -72,6 +72,14 @@ export async function createVectorStoreFromChunks(
     qwen: !!process.env.QWEN_API_KEY,
   });
 
+  // Store chunks in Redis for persistence (for Vercel serverless)
+  try {
+    const { setVectorChunks } = await import('@/lib/storage/redis-cache');
+    await setVectorChunks(pdfId, chunks);
+  } catch (redisError) {
+    console.log(`[VectorStore] Redis not available, using in-memory only`);
+  }
+
   const documents = chunks.map(
     (chunk) =>
       new Document({
@@ -106,7 +114,31 @@ export async function searchSimilarDocuments(
   k: number = 4
 ): Promise<Document[]> {
   console.log(`[VectorStore] Searching for "${query}" in ${pdfId} (k=${k})`);
-  const vectorStore = await getVectorStore(pdfId);
+  let vectorStore = await getVectorStore(pdfId);
+
+  // If not in memory, try to restore from Redis
+  if (!vectorStore) {
+    console.log(`[VectorStore] Vector store not in memory, checking Redis...`);
+    try {
+      const { getVectorChunks } = await import('@/lib/storage/redis-cache');
+      const chunks = await getVectorChunks(pdfId);
+
+      if (chunks && chunks.length > 0) {
+        console.log(`[VectorStore] ✓ Found ${chunks.length} chunks in Redis, recreating vector store...`);
+        const documents = chunks.map(
+          (chunk) =>
+            new Document({
+              pageContent: chunk.content,
+              metadata: chunk.metadata,
+            })
+        );
+        vectorStore = await createVectorStore(pdfId, documents);
+        console.log(`[VectorStore] ✓ Vector store restored from Redis`);
+      }
+    } catch (redisError) {
+      console.log(`[VectorStore] Redis not available or no chunks found`);
+    }
+  }
 
   if (!vectorStore) {
     console.warn(`[VectorStore] No vector store found for ${pdfId}. Available IDs:`, getVectorStoreIds());
@@ -115,7 +147,7 @@ export async function searchSimilarDocuments(
 
   const results = await vectorStore.similaritySearchWithScore(query, k);
   console.log(`[VectorStore] Found ${results.length} results for query "${query}"`);
-  
+
   // Log scores for debugging
   results.forEach(([doc, score], idx) => {
     console.log(`[VectorStore] Result ${idx + 1}: score=${score.toFixed(4)}, preview="${doc.pageContent.substring(0, 50)}..."`);
@@ -125,11 +157,11 @@ export async function searchSimilarDocuments(
   // Note: Lower scores are better in some distance metrics
   const threshold = 0.3;
   const filteredResults = results.filter(([, score]) => score > threshold);
-  
+
   if (filteredResults.length < results.length) {
     console.log(`[VectorStore] Filtered ${results.length - filteredResults.length} low-score results (threshold: ${threshold})`);
   }
-  
+
   // If all results were filtered, return top results anyway
   if (filteredResults.length === 0 && results.length > 0) {
     console.log(`[VectorStore] All results filtered, returning top ${Math.min(2, results.length)} anyway`);

@@ -42,38 +42,47 @@ function getMetadataPath(pdfId: string): string {
  */
 export async function addPDFFile(pdf: PDFFile): Promise<void> {
   pdfFiles.set(pdf.id, pdf);
-  
-  // Persist to filesystem
+
+  // Persist to Redis (primary storage for Vercel)
   try {
-    await ensureStorageDir();
+    const { setPDF } = await import('./redis-cache');
+    await setPDF(pdf.id, pdf);
+    console.log(`[PDF Storage] ✓ Persisted PDF ${pdf.id} to Redis`);
+  } catch (redisError) {
+    console.log(`[PDF Storage] Redis failed, using filesystem fallback:`, redisError);
     
-    // Save text content
-    if (pdf.textContent) {
-      await fs.writeFile(getTextContentPath(pdf.id), pdf.textContent, 'utf-8');
+    // Fallback: Persist to filesystem
+    try {
+      await ensureStorageDir();
+
+      // Save text content
+      if (pdf.textContent) {
+        await fs.writeFile(getTextContentPath(pdf.id), pdf.textContent, 'utf-8');
+      }
+
+      // Save metadata
+      const metadata = {
+        id: pdf.id,
+        fileName: pdf.fileName,
+        sanitizedName: pdf.sanitizedName,
+        fileSize: pdf.fileSize,
+        mimeType: pdf.mimeType,
+        uploadedAt: pdf.uploadedAt.toISOString(),
+        parseStatus: pdf.parseStatus,
+        pageCount: pdf.pageCount,
+        tempPath: pdf.tempPath,
+      };
+      await fs.writeFile(getMetadataPath(pdf.id), JSON.stringify(metadata), 'utf-8');
+
+      console.log(`[PDF Storage] ✓ Persisted PDF ${pdf.id} to filesystem`);
+    } catch (error) {
+      console.error(`[PDF Storage] ✗ Failed to persist PDF ${pdf.id}:`, error);
     }
-    
-    // Save metadata
-    const metadata = {
-      id: pdf.id,
-      fileName: pdf.fileName,
-      sanitizedName: pdf.sanitizedName,
-      fileSize: pdf.fileSize,
-      mimeType: pdf.mimeType,
-      uploadedAt: pdf.uploadedAt.toISOString(),
-      parseStatus: pdf.parseStatus,
-      pageCount: pdf.pageCount,
-      tempPath: pdf.tempPath,
-    };
-    await fs.writeFile(getMetadataPath(pdf.id), JSON.stringify(metadata), 'utf-8');
-    
-    console.log(`[PDF Storage] ✓ Persisted PDF ${pdf.id} to filesystem`);
-  } catch (error) {
-    console.error(`[PDF Storage] ✗ Failed to persist PDF ${pdf.id}:`, error);
   }
 }
 
 /**
- * Get a PDF file by ID (with filesystem fallback)
+ * Get a PDF file by ID (with Redis and filesystem fallback)
  */
 export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
   // Try memory first
@@ -81,14 +90,28 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
   if (pdf) {
     return pdf;
   }
-  
-  // Try filesystem
+
+  console.log(`[PDF Storage] PDF ${id} not in memory, checking Redis...`);
+
+  // Try Redis (primary storage for Vercel)
   try {
-    console.log(`[PDF Storage] PDF ${id} not in memory, checking filesystem...`);
-    
+    const { getPDF } = await import('./redis-cache');
+    const redisPdf = await getPDF(id);
+    if (redisPdf) {
+      // Cache in memory
+      pdfFiles.set(id, redisPdf);
+      console.log(`[PDF Storage] ✓ Loaded PDF ${id} from Redis`);
+      return redisPdf;
+    }
+  } catch (redisError) {
+    console.log(`[PDF Storage] Redis failed, checking filesystem:`, redisError);
+  }
+
+  // Fallback: Try filesystem
+  try {
     const metadataPath = getMetadataPath(id);
     const textPath = getTextContentPath(id);
-    
+
     // Check if files exist
     try {
       await fs.access(metadataPath);
@@ -97,7 +120,7 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
       console.log(`[PDF Storage] ✗ Metadata file not found: ${metadataPath}`);
       return undefined;
     }
-    
+
     // Read metadata
     const metadataStr = await fs.readFile(metadataPath, 'utf-8');
     const metadata = JSON.parse(metadataStr);
@@ -106,7 +129,7 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
       fileName: metadata.fileName,
       parseStatus: metadata.parseStatus,
     });
-    
+
     // Read text content
     let textContent: string | null = null;
     try {
@@ -116,19 +139,19 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
     } catch {
       console.log(`[PDF Storage] ⚠️ Text content file not found: ${textPath}`);
     }
-    
+
     // Reconstruct PDF object
-    pdf = {
+    const filesystemPdf = {
       ...metadata,
       uploadedAt: new Date(metadata.uploadedAt),
       textContent,
     } as PDFFile;
-    
+
     // Cache in memory
-    pdfFiles.set(id, pdf);
+    pdfFiles.set(id, filesystemPdf);
     console.log(`[PDF Storage] ✓ Loaded PDF ${id} from filesystem`);
-    
-    return pdf;
+
+    return filesystemPdf;
   } catch (error) {
     console.error(`[PDF Storage] ✗ Failed to load PDF ${id} from filesystem:`, error);
     return undefined;
@@ -136,15 +159,40 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
 }
 
 /**
- * Get all PDF files (with filesystem scan)
+ * Get all PDF files (with Redis and filesystem scan)
  */
 export async function getAllPDFFiles(): Promise<PDFFile[]> {
-  // First, try to load from filesystem if memory is empty
-  if (pdfFiles.size === 0) {
-    console.log('[PDF Storage] Memory empty, scanning filesystem...');
-    await loadAllPDFsFromFilesystem();
+  // If memory has data, return it
+  if (pdfFiles.size > 0) {
+    return Array.from(pdfFiles.values());
   }
-  
+
+  console.log('[PDF Storage] Memory empty, checking Redis...');
+
+  // Try to load from Redis first
+  try {
+    const { getAllPDFIds, getPDF } = await import('./redis-cache');
+    const ids = await getAllPDFIds();
+    
+    if (ids.length > 0) {
+      console.log(`[PDF Storage] Found ${ids.length} PDFs in Redis, loading...`);
+      
+      for (const id of ids) {
+        const pdf = await getPDF(id);
+        if (pdf) {
+          pdfFiles.set(id, pdf);
+        }
+      }
+      
+      console.log(`[PDF Storage] ✓ Loaded ${pdfFiles.size} PDFs from Redis`);
+      return Array.from(pdfFiles.values());
+    }
+  } catch (redisError) {
+    console.log('[PDF Storage] Redis failed, scanning filesystem:', redisError);
+  }
+
+  // Fallback: scan filesystem
+  await loadAllPDFsFromFilesystem();
   return Array.from(pdfFiles.values());
 }
 

@@ -146,6 +146,54 @@ export function PDFUploaderPro() {
           const parseEndTime = Date.now();
           console.log(`✅ 解析请求发送完成，耗时: ${parseEndTime - parseStartTime}ms`);
 
+          // Poll for parse completion and retrieve text content
+          console.log('🔄 [STEP 8.1] 开始轮询解析状态...');
+          let pollAttempts = 0;
+          const maxPollAttempts = 30; // 30 seconds max
+          let textContent: string | null = null;
+          let pageCount: number | null = null;
+
+          while (pollAttempts < maxPollAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            pollAttempts++;
+
+            const pollResponse = await fetch(`/api/parse?pdfId=${pdfId}`);
+            const pollResult = await pollResponse.json();
+
+            if (pollResult.success && pollResult.data) {
+              console.log(`📊 [轮询 ${pollAttempts}] 状态:`, pollResult.data.parseStatus);
+
+              if (pollResult.data.parseStatus === 'completed') {
+                textContent = pollResult.data.textContent || null;
+                pageCount = pollResult.data.pageCount || null;
+                console.log('✅ 解析完成！获取到文本内容:', { textLength: textContent?.length, pageCount });
+                break;
+              } else if (pollResult.data.parseStatus === 'failed') {
+                console.log('❌ 解析失败');
+                break;
+              }
+            }
+          }
+
+          // Update PDF in context with text content (for Vercel serverless chat)
+          if (textContent) {
+            console.log('💾 [STEP 8.2] 更新 PDF 文本内容到上下文...');
+            addPDF({
+              id: pdfId,
+              fileName,
+              sanitizedName: validation.sanitizedName || fileName,
+              fileSize,
+              mimeType: (file as File).type,
+              uploadedAt: new Date(uploadedAt),
+              parseStatus: 'completed' as any,
+              textContent,
+              pageCount,
+              tempPath,
+              base64Data,
+            });
+            console.log('✅ PDF 文本内容已更新');
+          }
+
           console.log('🎉 [STEP 9] 所有步骤完成！');
           setProgress(100);
           message.success("上传成功！");
