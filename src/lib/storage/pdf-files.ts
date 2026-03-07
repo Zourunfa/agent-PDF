@@ -136,10 +136,71 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
 }
 
 /**
- * Get all PDF files
+ * Get all PDF files (with filesystem scan)
  */
-export function getAllPDFFiles(): PDFFile[] {
+export async function getAllPDFFiles(): Promise<PDFFile[]> {
+  // First, try to load from filesystem if memory is empty
+  if (pdfFiles.size === 0) {
+    console.log('[PDF Storage] Memory empty, scanning filesystem...');
+    await loadAllPDFsFromFilesystem();
+  }
+  
   return Array.from(pdfFiles.values());
+}
+
+/**
+ * Load all PDFs from filesystem into memory
+ */
+async function loadAllPDFsFromFilesystem(): Promise<void> {
+  try {
+    const storageDir = getStorageDir();
+    await ensureStorageDir();
+    
+    const files = await fs.readdir(storageDir);
+    const metadataFiles = files.filter(f => f.endsWith('.json'));
+    
+    console.log(`[PDF Storage] Found ${metadataFiles.length} metadata files`);
+    
+    for (const file of metadataFiles) {
+      const pdfId = file.replace('.json', '');
+      
+      // Skip if already in memory
+      if (pdfFiles.has(pdfId)) {
+        continue;
+      }
+      
+      try {
+        const metadataPath = getMetadataPath(pdfId);
+        const metadataStr = await fs.readFile(metadataPath, 'utf-8');
+        const metadata = JSON.parse(metadataStr);
+        
+        // Read text content if exists
+        let textContent: string | null = null;
+        try {
+          const textPath = getTextContentPath(pdfId);
+          await fs.access(textPath);
+          textContent = await fs.readFile(textPath, 'utf-8');
+        } catch {
+          // Text file doesn't exist, that's ok
+        }
+        
+        // Reconstruct PDF object
+        const pdf: PDFFile = {
+          ...metadata,
+          uploadedAt: new Date(metadata.uploadedAt),
+          textContent,
+        };
+        
+        pdfFiles.set(pdfId, pdf);
+      } catch (error) {
+        console.error(`[PDF Storage] Failed to load PDF ${pdfId}:`, error);
+      }
+    }
+    
+    console.log(`[PDF Storage] Loaded ${pdfFiles.size} PDFs from filesystem`);
+  } catch (error) {
+    console.error('[PDF Storage] Failed to scan filesystem:', error);
+  }
 }
 
 /**
