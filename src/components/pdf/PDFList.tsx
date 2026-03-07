@@ -4,16 +4,19 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Typography, Tag, Button, Space, Empty } from "antd";
-import { FileTextOutlined, DeleteOutlined, LoadingOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { FileTextOutlined, DeleteOutlined, LoadingOutlined, CheckCircleOutlined, ExclamationCircleOutlined, EditOutlined } from "@ant-design/icons";
 import { usePDF } from "@/contexts/PDFContext";
 import { ParseStatus } from "@/types/pdf";
+import { ManualTextInput } from "./ManualTextInput";
 
 const { Text } = Typography;
 
 export function PDFList() {
   const { pdfs, activePdfId, setActivePdf, removePDF } = usePDF();
+  const [manualInputVisible, setManualInputVisible] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState<{ id: string; fileName: string } | null>(null);
 
   const pdfList = Array.from(pdfs.values());
 
@@ -33,6 +36,7 @@ export function PDFList() {
         const isActive = pdf.id === activePdfId;
         const isParsing = pdf.parseStatus === ParseStatus.PARSING;
         const isCompleted = pdf.parseStatus === ParseStatus.COMPLETED;
+        const isFailed = pdf.parseStatus === ParseStatus.FAILED;
 
         return (
           <div
@@ -66,6 +70,8 @@ export function PDFList() {
                 <LoadingOutlined style={{ fontSize: 20, color: '#6366F1' }} />
               ) : isCompleted ? (
                 <CheckCircleOutlined style={{ fontSize: 20, color: '#10B981' }} />
+              ) : isFailed ? (
+                <ExclamationCircleOutlined style={{ fontSize: 20, color: '#EF4444' }} />
               ) : (
                 <FileTextOutlined style={{ fontSize: 20, color: '#6366F1' }} />
               )}
@@ -104,30 +110,73 @@ export function PDFList() {
                     </Tag>
                   </>
                 )}
+                {isFailed && (
+                  <>
+                    <Text type="secondary">·</Text>
+                    <Tag color="error" style={{ fontSize: 10, margin: 0 }}>
+                      解析失败
+                    </Tag>
+                  </>
+                )}
               </Space>
             </div>
 
-            {/* Delete Button */}
-            <Button
-              type="text"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                removePDF(pdf.id);
-              }}
-              style={{ opacity: 0.6, flexShrink: 0 }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '0.6';
-              }}
-            />
+            {/* Actions */}
+            <Space size={4} style={{ flexShrink: 0 }}>
+              {isFailed && (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPdf({ id: pdf.id, fileName: pdf.fileName });
+                    setManualInputVisible(true);
+                  }}
+                  style={{ 
+                    fontSize: 11, 
+                    height: 24,
+                    background: '#6366F1',
+                    borderColor: '#6366F1'
+                  }}
+                >
+                  手动输入
+                </Button>
+              )}
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removePDF(pdf.id);
+                }}
+                style={{ opacity: 0.6, flexShrink: 0 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.6';
+                }}
+              />
+            </Space>
           </div>
         );
       })}
+
+      {/* Manual Text Input Modal */}
+      {selectedPdf && (
+        <ManualTextInput
+          pdfId={selectedPdf.id}
+          fileName={selectedPdf.fileName}
+          visible={manualInputVisible}
+          onClose={() => {
+            setManualInputVisible(false);
+            setSelectedPdf(null);
+          }}
+        />
+      )}
     </div>
   );
 }
