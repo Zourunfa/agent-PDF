@@ -96,12 +96,12 @@ async function parsePDFAsync(pdfId: string) {
   console.log(`[Parse API] ============================================================`);
   console.log(`[Parse API] ⚡ async function STARTED for PDF: ${pdfId}`);
   
-  // Set a hard timeout for the entire parsing process (4 seconds)
-  const PARSE_TIMEOUT = 4000;
+  // Set a hard timeout for the entire parsing process (8 seconds for Vercel)
+  const PARSE_TIMEOUT = 8000;
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
       console.error(`[Parse API] ✗ Hard timeout after ${PARSE_TIMEOUT}ms`);
-      reject(new Error('PDF 解析超时'));
+      reject(new Error('PDF 解析超时 - Vercel 函数执行时间限制'));
     }, PARSE_TIMEOUT);
   });
   
@@ -174,11 +174,11 @@ async function parsePDFAsyncInternal(pdfId: string) {
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
     const parseStartTime = Date.now();
     
-    // Wrap parsePDF in its own timeout to catch hanging
+    // Wrap parsePDF in its own timeout to catch hanging (7 seconds)
     const parseWithTimeout = Promise.race([
       parsePDF(buffer),
       new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('PDF 解析超时 - pdf2json 未响应')), 3500)
+        setTimeout(() => reject(new Error('PDF 解析超时 - pdf2json 未响应')), 7000)
       )
     ]);
     
