@@ -180,7 +180,14 @@ async function parsePDFAsyncInternal(pdfId: string) {
     // Parse PDF
     const readStart = Date.now();
     console.log(`[Parse API] → Reading file buffer...`);
-    const buffer = await fs.readFile(filePath);
+    
+    // Add timeout for file read (2 seconds)
+    const readPromise = fs.readFile(filePath);
+    const readTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('File read timeout')), 2000)
+    );
+    
+    const buffer = await Promise.race([readPromise, readTimeout]) as Buffer;
     const readTime = Date.now() - readStart;
     console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes (read in ${readTime}ms)`);
     console.log(`[Parse API] ✓ Buffer is valid: ${Buffer.isBuffer(buffer)}`);

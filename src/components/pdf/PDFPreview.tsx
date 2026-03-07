@@ -44,14 +44,30 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
       setError(null);
 
       try {
-        // 构建PDF文件URL
-        const pdfUrl = `/api/pdf/${activePdf.id}`;
+        let pdfData: string | ArrayBuffer;
 
-        console.log('[PDFPreview] Loading PDF from:', pdfUrl);
+        // 优先使用缓存的 base64 数据（避免 Vercel Serverless /tmp 问题）
+        if (activePdf.base64Data) {
+          console.log('[PDFPreview] Using cached base64 data');
+          // Convert base64 to Uint8Array
+          const binaryString = atob(activePdf.base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          pdfData = bytes;
+        } else {
+          // Fallback: 从 API 加载（本地环境）
+          console.log('[PDFPreview] Loading PDF from API:', activePdf.id);
+          const pdfUrl = `/api/pdf/${activePdf.id}`;
+          pdfData = pdfUrl;
+        }
+
         console.log('[PDFPreview] PDF status:', activePdf.parseStatus);
 
         const loadingTask = pdfjsLib.getDocument({
-          url: pdfUrl,
+          data: typeof pdfData === 'string' ? undefined : pdfData,
+          url: typeof pdfData === 'string' ? pdfData : undefined,
           cMapUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
           cMapPacked: true,
         });
@@ -137,20 +153,26 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
     );
   }
 
-  // Vercel 环境提示
-  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+  // 如果没有 base64 数据且在 Vercel 环境，显示提示
+  const isVercel = typeof window !== 'undefined' && (
+    window.location.hostname.includes('vercel.app') ||
+    window.location.hostname.includes('vercel.com') ||
+    process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined
+  );
+
+  if (isVercel && !activePdf.base64Data) {
     return (
       <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
         <div className="text-center max-w-md px-4">
           <div className="mb-3 text-4xl">📄</div>
           <p className="text-sm font-semibold text-indigo-700 mb-2">
-            PDF 预览在 Vercel 上不可用
+            PDF 预览数据不可用
           </p>
           <p className="text-xs text-indigo-500 mb-3">
-            由于 Serverless 环境限制，PDF 文件无法在函数实例间共享。
+            此 PDF 在旧版本上传，缺少预览数据。请重新上传以启用预览功能。
           </p>
           <p className="text-xs text-indigo-600 font-medium">
-            请切换到"文本内容"标签页查看 PDF 内容
+            或切换到"文本内容"标签页查看 PDF 内容
           </p>
         </div>
       </div>

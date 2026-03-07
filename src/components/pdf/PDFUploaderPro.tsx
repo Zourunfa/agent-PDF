@@ -104,7 +104,7 @@ export function PDFUploaderPro() {
         if (result.success) {
           console.log('✅ 上传成功！开始处理响应数据...');
 
-          const { pdfId, fileName, fileSize, uploadedAt, parseStatus, tempPath } = result.data;
+          const { pdfId, fileName, fileSize, uploadedAt, parseStatus, tempPath, base64Data } = result.data;
           const validation = validatePDFFile(file as File);
 
           console.log('📋 准备添加到上下文的数据:', {
@@ -114,6 +114,7 @@ export function PDFUploaderPro() {
             uploadedAt,
             parseStatus,
             tempPath,
+            hasBase64Data: !!base64Data,
             sanitizedName: validation.sanitizedName || fileName,
           });
 
@@ -129,6 +130,7 @@ export function PDFUploaderPro() {
             textContent: null,
             pageCount: null,
             tempPath, // 使用API返回的文件路径
+            base64Data, // Cache base64 data for preview (Vercel workaround)
           });
           console.log('✅ addPDF 完成');
 

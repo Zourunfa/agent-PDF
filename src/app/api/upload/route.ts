@@ -99,6 +99,10 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ 上传完成，准备返回响应');
 
+    // Convert buffer to base64 for frontend caching (Vercel Serverless workaround)
+    const base64Data = buffer.toString('base64');
+    console.log('📦 Base64 data size:', base64Data.length, 'chars');
+
     return NextResponse.json({
       success: true,
       data: {
@@ -109,6 +113,7 @@ export async function POST(req: NextRequest) {
         parseStatus: ParseStatus.PENDING,
         uploadTaskId: taskId,
         tempPath, // 返回文件路径
+        base64Data, // 返回 base64 数据用于前端预览
       },
     });
   } catch (error) {
