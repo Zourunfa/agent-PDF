@@ -137,6 +137,26 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
     );
   }
 
+  // Vercel 环境提示
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return (
+      <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
+        <div className="text-center max-w-md px-4">
+          <div className="mb-3 text-4xl">📄</div>
+          <p className="text-sm font-semibold text-indigo-700 mb-2">
+            PDF 预览在 Vercel 上不可用
+          </p>
+          <p className="text-xs text-indigo-500 mb-3">
+            由于 Serverless 环境限制，PDF 文件无法在函数实例间共享。
+          </p>
+          <p className="text-xs text-indigo-600 font-medium">
+            请切换到"文本内容"标签页查看 PDF 内容
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // 加载失败
   if (error) {
     return (
