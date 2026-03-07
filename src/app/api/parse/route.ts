@@ -95,14 +95,13 @@ export async function POST(req: NextRequest) {
 async function parsePDFAsync(pdfId: string) {
   console.log(`[Parse API] ============================================================`);
   console.log(`[Parse API] ⚡ async function STARTED for PDF: ${pdfId}`);
-  console.log(`[Parse API] Current memory store keys: ${Array.from(parsedPDFs.keys())}`);
   
-  // Set a hard timeout for the entire parsing process
-  const PARSE_TIMEOUT = 6000; // 6 seconds
+  // Set a hard timeout for the entire parsing process (4 seconds)
+  const PARSE_TIMEOUT = 4000;
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
       console.error(`[Parse API] ✗ Hard timeout after ${PARSE_TIMEOUT}ms`);
-      reject(new Error('PDF parsing timeout - file may be too complex'));
+      reject(new Error('PDF 解析超时'));
     }, PARSE_TIMEOUT);
   });
   
@@ -174,59 +173,10 @@ async function parsePDFAsyncInternal(pdfId: string) {
 
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
     const parseStartTime = Date.now();
-    console.log(`[Parse API] → Calling parsePDF function...`);
     
-    let parseResult;
-    try {
-      // Add timeout protection (7 seconds to leave buffer for cleanup)
-      const parseTimeout = 7000;
-      console.log(`[Parse API] Starting parse with ${parseTimeout}ms timeout...`);
-      
-      const parsePromise = parsePDF(buffer);
-      console.log(`[Parse API] → parsePDF promise created`);
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => {
-          console.error(`[Parse API] ✗ Parse timeout after ${parseTimeout}ms`);
-          reject(new Error('PDF parsing timeout'));
-        }, parseTimeout)
-      );
-      
-      console.log(`[Parse API] → Waiting for Promise.race...`);
-      parseResult = await Promise.race([parsePromise, timeoutPromise]) as any;
-      const parseTime = Date.now() - parseStartTime;
-      console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
-    } catch (parseError) {
-      const parseTime = Date.now() - parseStartTime;
-      console.error(`[Parse API] ✗ PDF parsing failed after ${parseTime}ms:`, parseError);
-      console.error(`[Parse API] ✗ Error type:`, parseError instanceof Error ? parseError.constructor.name : typeof parseError);
-      console.error(`[Parse API] ✗ Error message:`, parseError instanceof Error ? parseError.message : String(parseError));
-      
-      // If it's a timeout or parsing error, mark as failed but don't throw
-      // This allows the function to complete and save the failure status
-      parsedPDFs.set(pdfId, {
-        textContent: "",
-        pageCount: 0,
-        parseStatus: ParseStatus.FAILED,
-        progress: 0,
-      });
-      
-      // Update PDF file storage
-      try {
-        const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
-        const pdfFile = await getPDFFile(pdfId);
-        if (pdfFile) {
-          pdfFile.parseStatus = ParseStatus.FAILED;
-          await addPDFFile(pdfFile);
-          console.log(`[Parse API] ✓ Marked PDF as FAILED in storage`);
-        }
-      } catch (storageError) {
-        console.error(`[Parse API] ✗ Failed to update storage:`, storageError);
-      }
-      
-      console.log(`[Parse API] ============================================================`);
-      return; // Exit early
-    }
+    const parseResult = await parsePDF(buffer);
+    const parseTime = Date.now() - parseStartTime;
+    console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
     
     console.log(`[Parse API] Parse result:`, {
       textLength: parseResult.text.length,

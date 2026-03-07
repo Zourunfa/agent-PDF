@@ -1,5 +1,6 @@
 /**
- * PDF parsing utilities using pdf2json with OCR fallback
+ * PDF parsing utilities using pdf2json
+ * Simplified with strict timeout to avoid hanging
  */
 
 export interface ParsedPDF {
@@ -9,11 +10,8 @@ export interface ParsedPDF {
 }
 
 /**
- * Parse PDF using multiple parsers with fallback
- * 1. Try pdf-lib (lightweight, no worker issues)
- * 2. Try pdfjs-dist (most reliable for complex PDFs)
- * 3. Fallback to pdf2json
- * 4. Fallback to OCR for scanned documents
+ * Parse PDF using pdf2json with strict timeout
+ * Simplified to avoid complex parser issues
  */
 export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise<ParsedPDF> {
   // If OCR is explicitly requested, use it directly
@@ -23,91 +21,42 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
     return parseScannedPDF(buffer);
   }
 
-  // Try pdf-lib first (lightweight, no worker issues)
-  try {
-    console.log("[Parser] Attempting pdf-lib parser...");
-    const { parsePDFWithPDFLib } = await import("./pdflib-parser");
-    const result = await parsePDFWithPDFLib(buffer);
-    
-    // Check if text is valid
-    if (result.text.length >= 50) {
-      console.log("[Parser] ✓ pdf-lib parsing successful");
-      return result;
-    }
-    
-    console.warn("[Parser] ⚠️ pdf-lib returned insufficient text, trying PDF.js...");
-  } catch (pdflibError) {
-    console.error("[Parser] pdf-lib failed:", pdflibError);
-    console.log("[Parser] → Falling back to PDF.js...");
-  }
+  console.log("[Parser] Parsing PDF with pdf2json...");
+  console.log("[Parser] Buffer size:", buffer.length, "bytes");
 
-  // Try pdfjs-dist second (most reliable for complex PDFs)
   try {
-    console.log("[Parser] Attempting PDF.js parser...");
-    const { parsePDFWithPDFJS } = await import("./pdfjs-parser");
-    const result = await parsePDFWithPDFJS(buffer);
-    
-    // Check if text is valid
-    if (result.text.length >= 50) {
-      console.log("[Parser] ✓ PDF.js parsing successful");
-      return result;
-    }
-    
-    console.warn("[Parser] ⚠️ PDF.js returned insufficient text, trying pdf2json...");
-  } catch (pdfjsError) {
-    console.error("[Parser] PDF.js failed:", pdfjsError);
-    console.log("[Parser] → Falling back to pdf2json...");
-  }
-
-  // Fallback to pdf2json
-  try {
-    console.log("[Parser] Parsing PDF with pdf2json...");
-    console.log("[Parser] Buffer size:", buffer.length, "bytes");
-    console.log("[Parser] → Importing PDFParser...");
-
     // Dynamic import to avoid webpack issues
     const PDFParser = (await import("pdf2json")).default;
-    console.log("[Parser] ✓ PDFParser imported successfully");
-    console.log("[Parser] → Creating Promise wrapper...");
+    console.log("[Parser] ✓ PDFParser imported");
 
     return new Promise(async (resolve, reject) => {
-      console.log("[Parser] → Inside Promise executor");
-      
-      // Add timeout to prevent hanging
+      // Strict 5-second timeout
       const timeout = setTimeout(() => {
-        console.error("[Parser] ✗ PDF parsing timeout after 7 seconds");
-        reject(new Error("PDF parsing timeout - file may be too complex or corrupted"));
-      }, 7000);
-      console.log("[Parser] ✓ Timeout set (7s)");
+        console.error("[Parser] ✗ Timeout after 5 seconds");
+        reject(new Error("PDF 解析超时 - 文件可能过于复杂或损坏"));
+      }, 5000);
 
-      console.log("[Parser] → Creating PDFParser instance...");
       const pdfParser = new PDFParser(null, true);
-      console.log("[Parser] ✓ PDFParser instance created");
 
-      console.log("[Parser] → Attaching event listeners...");
       pdfParser.on("pdfParser_dataError", (errData: any) => {
         clearTimeout(timeout);
-        console.error("[Parser] ✗ pdfParser_dataError event fired");
-        console.error("[Parser] PDF parse error:", errData);
-        reject(new Error(`PDF parse error: ${errData.parserError || errData}`));
+        console.error("[Parser] ✗ Parse error:", errData);
+        reject(new Error(`PDF 解析错误: ${errData.parserError || errData}`));
       });
-      console.log("[Parser] ✓ dataError listener attached");
 
       pdfParser.on("pdfParser_dataReady", async (pdfData: any) => {
         clearTimeout(timeout);
-        console.log("[Parser] ✓ pdfParser_dataReady event fired");
-        console.log("[Parser] → Processing PDF data...");
+        console.log("[Parser] ✓ Parse complete");
+        
         try {
           let fullText = "";
           let pageCount = 0;
-          let totalTextElements = 0;
 
           if (pdfData.Pages) {
             pageCount = pdfData.Pages.length;
             
             for (const page of pdfData.Pages) {
               if (page.Texts) {
-                totalTextElements += page.Texts.length;
                 for (const text of page.Texts) {
                   if (text.R) {
                     for (const r of text.R) {
@@ -123,38 +72,17 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
           }
 
           const cleanText = fullText.trim();
-          console.log(`[Parser] ✓ PDF parsed: ${pageCount} pages, ${totalTextElements} text elements`);
-          console.log(`[Parser] ✓ Extracted ${cleanText.length} characters`);
+          console.log(`[Parser] ✓ Extracted ${cleanText.length} chars from ${pageCount} pages`);
 
-          // Check if PDF is image-based (scanned)
-          if (totalTextElements === 0 || cleanText.length < 50) {
-            console.warn(`[Parser] ⚠️  PDF appears to be scanned/image-based, attempting OCR...`);
-            
-            try {
-              const { parseScannedPDF, isOCRAvailable } = await import("./ocr-parser");
-              
-              if (!isOCRAvailable()) {
-                reject(new Error(
-                  "此 PDF 文件是扫描件，需要 OCR 处理，但 OCR 功能未安装。\n\n" +
-                  "请运行: npm install tesseract.js pdf-to-png-converter"
-                ));
-                return;
-              }
-              
-              console.log("[Parser] → Switching to OCR mode...");
-              const ocrResult = await parseScannedPDF(buffer);
-              resolve(ocrResult);
-            } catch (ocrError) {
-              console.error("[Parser] OCR fallback failed:", ocrError);
-              reject(new Error(
-                `此 PDF 文件是扫描件，OCR 识别失败。\n\n` +
-                `错误: ${ocrError instanceof Error ? ocrError.message : String(ocrError)}\n\n` +
-                `建议：\n` +
-                `1. 确保 PDF 图片清晰可读\n` +
-                `2. 尝试使用专业 OCR 工具预处理\n` +
-                `3. 上传文本型 PDF（可选择文字的 PDF）`
-              ));
-            }
+          // Check if scanned PDF
+          if (cleanText.length < 50) {
+            console.warn(`[Parser] ⚠️ Insufficient text, may be scanned PDF`);
+            reject(new Error(
+              "此 PDF 文件可能是扫描件，文本内容不足。\n\n" +
+              "建议：\n" +
+              "1. 上传文本型 PDF（可选择文字的 PDF）\n" +
+              "2. 或使用 OCR 工具预处理"
+            ));
             return;
           }
 
@@ -164,24 +92,23 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
             info: pdfData.Meta || {},
           });
         } catch (error) {
-          console.error("[Parser] Error processing PDF data:", error);
+          console.error("[Parser] ✗ Data processing error:", error);
           reject(error);
         }
       });
 
       try {
-        console.log("[Parser] Calling parseBuffer...");
+        console.log("[Parser] → Calling parseBuffer...");
         pdfParser.parseBuffer(buffer);
-        console.log("[Parser] parseBuffer called, waiting for events...");
       } catch (parseError) {
         clearTimeout(timeout);
-        console.error("[Parser] parseBuffer error:", parseError);
+        console.error("[Parser] ✗ parseBuffer error:", parseError);
         reject(parseError);
       }
     });
   } catch (error) {
-    console.error("[Parser] Error:", error);
-    throw new Error(`Failed to parse PDF: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("[Parser] ✗ Error:", error);
+    throw new Error(`PDF 解析失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
