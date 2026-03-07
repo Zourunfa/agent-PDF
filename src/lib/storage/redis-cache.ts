@@ -4,7 +4,14 @@
  */
 
 import { PDFFile } from "@/types/pdf";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
+
+// Initialize Upstash Redis client
+// Vercel + Upstash integration provides these env vars
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "",
+});
 
 const PDF_PREFIX = "pdf:";
 const VECTOR_PREFIX = "vector:";
@@ -32,10 +39,10 @@ export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
     };
 
     // Store PDF data with 7 day expiration
-    await kv.set(key, JSON.stringify(data), { ex: 60 * 60 * 24 * 7 });
+    await redis.set(key, JSON.stringify(data), { ex: 60 * 60 * 24 * 7 });
 
     // Add to PDF list
-    await kv.sadd(PDF_LIST_KEY, pdfId);
+    await redis.sadd(PDF_LIST_KEY, pdfId);
 
     console.log(`[Redis] ✓ Stored PDF ${pdfId}`);
   } catch (error) {
@@ -50,7 +57,7 @@ export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
 export async function getPDF(pdfId: string): Promise<PDFFile | null> {
   try {
     const key = `${PDF_PREFIX}${pdfId}`;
-    const data = await kv.get<string>(key);
+    const data = await redis.get<string>(key);
 
     if (!data) {
       console.log(`[Redis] PDF ${pdfId} not found`);
@@ -76,7 +83,7 @@ export async function getPDF(pdfId: string): Promise<PDFFile | null> {
  */
 export async function getAllPDFIds(): Promise<string[]> {
   try {
-    const ids = await kv.smembers(PDF_LIST_KEY);
+    const ids = await redis.smembers(PDF_LIST_KEY);
     console.log(`[Redis] ✓ Retrieved ${ids.length} PDF IDs`);
     return ids as string[];
   } catch (error) {
@@ -91,8 +98,8 @@ export async function getAllPDFIds(): Promise<string[]> {
 export async function deletePDF(pdfId: string): Promise<void> {
   try {
     const key = `${PDF_PREFIX}${pdfId}`;
-    await kv.del(key);
-    await kv.srem(PDF_LIST_KEY, pdfId);
+    await redis.del(key);
+    await redis.srem(PDF_LIST_KEY, pdfId);
     console.log(`[Redis] ✓ Deleted PDF ${pdfId}`);
   } catch (error) {
     console.error(`[Redis] ✗ Failed to delete PDF ${pdfId}:`, error);
@@ -108,9 +115,9 @@ export async function setVectorChunks(
 ): Promise<void> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
-    
+
     // Store chunks with 7 day expiration
-    await kv.set(key, JSON.stringify(chunks), { ex: 60 * 60 * 24 * 7 });
+    await redis.set(key, JSON.stringify(chunks), { ex: 60 * 60 * 24 * 7 });
 
     console.log(`[Redis] ✓ Stored ${chunks.length} vector chunks for ${pdfId}`);
   } catch (error) {
@@ -127,7 +134,7 @@ export async function getVectorChunks(
 ): Promise<Array<{ content: string; metadata: Record<string, unknown> }> | null> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
-    const data = await kv.get<string>(key);
+    const data = await redis.get<string>(key);
 
     if (!data) {
       console.log(`[Redis] Vector chunks for ${pdfId} not found`);
@@ -149,7 +156,7 @@ export async function getVectorChunks(
 export async function deleteVectorChunks(pdfId: string): Promise<void> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
-    await kv.del(key);
+    await redis.del(key);
     console.log(`[Redis] ✓ Deleted vector chunks for ${pdfId}`);
   } catch (error) {
     console.error(`[Redis] ✗ Failed to delete vector chunks for ${pdfId}:`, error);
@@ -161,7 +168,8 @@ export async function deleteVectorChunks(pdfId: string): Promise<void> {
  */
 export async function checkRedisConnection(): Promise<boolean> {
   try {
-    await kv.ping();
+    // @upstash/redis doesn't have a ping method, use a simple command instead
+    await redis.set("__health_check__", "ok", { ex: 1 });
     console.log(`[Redis] ✓ Connection OK`);
     return true;
   } catch (error) {

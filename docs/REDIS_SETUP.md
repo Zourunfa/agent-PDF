@@ -1,6 +1,6 @@
 # Redis 缓存配置指南
 
-本项目使用 **Vercel KV** (基于 Redis) 来缓存 PDF 数据，确保在 Vercel 无服务器环境中数据能够跨实例共享。
+本项目使用 **Upstash Redis** 来缓存 PDF 数据，确保在 Vercel 无服务器环境中数据能够跨实例共享。
 
 ## 为什么需要 Redis？
 
@@ -12,35 +12,44 @@ Redis 提供了持久化存储，解决了这个问题。
 
 ## 配置步骤
 
-### 1. 创建 Vercel KV 数据库
+### 1. 创建 Upstash Redis 数据库
 
+1. 访问 [Upstash Console](https://console.upstash.com/)
+2. 点击 **Create Redis Database**
+3. 选择区域（推荐选择离你最近的区域）
+4. 点击 **Create**
+5. 创建后会显示 **REST API** 连接信息
+
+### 2. 配置环境变量
+
+在 Vercel 项目中配置以下环境变量：
+
+```
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+#### 在 Vercel Dashboard 配置：
 1. 访问 [Vercel Dashboard](https://vercel.com/dashboard)
 2. 进入你的项目
-3. 点击 **Storage** 标签
-4. 点击 **Create Database**
-5. 选择 **KV** (Redis)
-6. 点击 **Continue** → **Create**
-
-### 2. 环境变量自动配置
-
-Vercel 会自动为你创建以下环境变量：
-
-```
-KV_URL=
-KV_REST_API_URL=
-KV_REST_API_TOKEN=
-KV_REST_API_READ_ONLY_TOKEN=
-```
-
-这些变量会自动注入到你的部署环境中，**无需手动配置**。
+3. 点击 **Settings** → **Environment Variables**
+4. 添加上述两个环境变量（从 Upstash Console 复制）
 
 ### 3. 本地开发配置（可选）
 
-如果想在本地使用 Redis，有两种方式：
+如果想在本地使用 Redis，推荐直接使用 Upstash：
 
-#### 方式 A：连接到 Vercel KV（推荐）
+#### 使用 Upstash Redis（推荐）
 
-Vercel CLI 会自动拉取环境变量：
+1. 从 Upstash Console 复制你的 REST API URL 和 Token
+2. 创建 `.env.local` 文件：
+
+```env
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxxxx
+```
+
+或者使用 Vercel CLI 拉取环境变量：
 
 ```bash
 # 安装 Vercel CLI
@@ -54,31 +63,6 @@ vercel link
 
 # 拉取环境变量到 .env.local
 vercel env pull .env.local
-```
-
-#### 方式 B：使用本地 Redis
-
-```bash
-# 安装 Redis
-# macOS
-brew install redis
-brew start redis
-
-# Linux
-sudo apt install redis-server
-sudo systemctl start redis
-
-# Windows
-# 使用 Docker
-docker run -d -p 6379:6379 redis
-```
-
-然后配置 `.env.local`：
-
-```env
-# 使用 Upstash Redis（免费额度）
-UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=xxxxx
 ```
 
 ## 缓存策略
@@ -99,15 +83,14 @@ UPSTASH_REDIS_REST_TOKEN=xxxxx
 
 ## 成本估算
 
-Vercel KV 定价（截至 2024年）：
+Upstash Redis 定价（截至 2024年）：
 
 | 计划 | 价格 | 存储 | 命令/天 |
 |-----|------|------|---------|
-| Hobby | 免费 | 256 MB | 10,000 |
-| Pro | $0.50/GB | 1 GB | 30,000 |
-| Pro Max | $2.00/GB | 10 GB | 300,000 |
+| Free | 免费 | 256 MB | 10,000 |
+| Paid | $0.20/GB | 10 GB | 300,000 |
 
-对于大多数 PDF 聊天应用，Hobby 计划（免费）已足够。
+对于大多数 PDF 聊天应用，Free 计划（免费）已足够。
 
 ## 故障排查
 
@@ -131,8 +114,8 @@ Vercel KV 定价（截至 2024年）：
 
 ## 生产环境清单
 
-- [ ] 创建 Vercel KV 数据库
-- [ ] 确认环境变量已自动注入
+- [ ] 在 Upstash 创建 Redis 数据库
+- [ ] 在 Vercel 项目中配置环境变量（UPSTASH_REDIS_REST_URL 和 UPSTASH_REDIS_REST_TOKEN）
 - [ ] 部署后测试上传和聊天功能
 - [ ] 检查 Vercel 日志确认 Redis 连接成功
 
