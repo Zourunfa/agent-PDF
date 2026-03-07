@@ -111,57 +111,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function parsePDFAsync(pdfId: string) {
-  console.log(`[Parse API] ============================================================`);
-  console.log(`[Parse API] ⚡ async function STARTED for PDF: ${pdfId}`);
-  
-  // Set a hard timeout for the entire parsing process (8 seconds for Vercel)
-  const PARSE_TIMEOUT = 8000;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      console.error(`[Parse API] ✗ Hard timeout after ${PARSE_TIMEOUT}ms`);
-      reject(new Error('PDF 解析超时 - Vercel 函数执行时间限制'));
-    }, PARSE_TIMEOUT);
-  });
-  
-  try {
-    await Promise.race([
-      parsePDFAsyncInternal(pdfId),
-      timeoutPromise
-    ]);
-  } catch (error) {
-    console.error("[Parse API] ✗ Parse failed with timeout or error:", error);
-    
-    // Check if it's a scanned PDF error
-    const isScannedPDF = error instanceof Error && error.message === 'PDF_SCANNED';
-    
-    if (isScannedPDF) {
-      console.log("[Parse API] ℹ️ PDF is a scanned document (image-based), marking as FAILED");
-    }
-    
-    // Mark as failed
-    parsedPDFs.set(pdfId, {
-      textContent: "",
-      pageCount: 0,
-      parseStatus: ParseStatus.FAILED,
-      progress: 0,
-    });
-    
-    // Update storage
-    try {
-      const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
-      const pdfFile = await getPDFFile(pdfId);
-      if (pdfFile) {
-        pdfFile.parseStatus = ParseStatus.FAILED;
-        await addPDFFile(pdfFile);
-        console.log(`[Parse API] ✓ Marked PDF as FAILED in storage`);
-      }
-    } catch (storageError) {
-      console.error("[Parse API] ✗ Failed to update storage:", storageError);
-    }
-  }
-}
-
 async function parsePDFAsyncInternal(pdfId: string): Promise<{
   parseStatus: ParseStatus;
   textContent: string;
