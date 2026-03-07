@@ -89,16 +89,32 @@ export async function getPDFFile(id: string): Promise<PDFFile | undefined> {
     const metadataPath = getMetadataPath(id);
     const textPath = getTextContentPath(id);
     
+    // Check if files exist
+    try {
+      await fs.access(metadataPath);
+      console.log(`[PDF Storage] ✓ Metadata file exists`);
+    } catch {
+      console.log(`[PDF Storage] ✗ Metadata file not found: ${metadataPath}`);
+      return undefined;
+    }
+    
     // Read metadata
     const metadataStr = await fs.readFile(metadataPath, 'utf-8');
     const metadata = JSON.parse(metadataStr);
+    console.log(`[PDF Storage] ✓ Metadata loaded:`, {
+      id: metadata.id,
+      fileName: metadata.fileName,
+      parseStatus: metadata.parseStatus,
+    });
     
     // Read text content
     let textContent: string | null = null;
     try {
+      await fs.access(textPath);
       textContent = await fs.readFile(textPath, 'utf-8');
+      console.log(`[PDF Storage] ✓ Text content loaded: ${textContent.length} chars`);
     } catch {
-      // Text content might not exist yet
+      console.log(`[PDF Storage] ⚠️ Text content file not found: ${textPath}`);
     }
     
     // Reconstruct PDF object
