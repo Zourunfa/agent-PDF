@@ -3,11 +3,15 @@
  */
 
 import { NextRequest } from "next/server";
-import { createQAChain, formatChatHistory } from "@/lib/langchain/chain";
-import { searchSimilarDocuments } from "@/lib/langchain/vector-store";
+import { chatModel } from "@/lib/langchain/config";
+import { searchSimilarDocuments, getVectorStoreIds } from "@/lib/langchain/vector-store";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 export async function POST(req: NextRequest) {
   const { pdfId, question, conversationId, history } = await req.json();
+
+  console.log(`[Chat API] Received chat request for PDF: ${pdfId}, question: "${question}"`);
+  console.log(`[Chat API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
 
   if (!pdfId || !question) {
     return new Response(
@@ -33,6 +37,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       try {
         const messageId = conversationId + "-" + Date.now();
+        const startTime = Date.now();
 
         // Send start event
         controller.enqueue(
@@ -45,14 +50,29 @@ export async function POST(req: NextRequest) {
         );
 
         // Search for relevant context
-        const relevantDocs = await searchSimilarDocuments(pdfId, question, 4);
+        console.log(`[Chat API] Searching for relevant documents...`);
+        console.log(`[Chat API] Available vector stores: ${getVectorStoreIds().join(', ')}`);
+
+        let relevantDocs: Document[] = [];
+        try {
+          relevantDocs = await searchSimilarDocuments(pdfId, question, 4);
+          console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
+        } catch (searchError) {
+          console.error(`[Chat API] Vector search error:`, searchError);
+        }
 
         if (relevantDocs.length === 0) {
+          console.warn(`[Chat API] No relevant documents found for PDF ${pdfId}`);
+          const hasVectorStore = getVectorStoreIds().includes(pdfId);
+          const errorMsg = hasVectorStore
+            ? "抱歉，我在文档中没有找到与您问题相关的内容。请尝试用不同的方式描述您的问题，或者检查文档是否包含相关信息。"
+            : "抱歉，文档尚未完成解析或解析失败。请等待文档解析完成后再试，或者重新上传文档。";
+
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
                 type: "token",
-                content: "抱歉，我没有找到相关的文档内容。请尝试重新表述您的问题。",
+                content: errorMsg,
                 messageId,
               })}\n\n`
             )
@@ -64,8 +84,10 @@ export async function POST(req: NextRequest) {
                 messageId,
                 metadata: {
                   tokenCount: 0,
-                  processingTime: 0,
-                  modelUsed: "gpt-3.5-turbo",
+                  processingTime: Date.now() - startTime,
+                  modelUsed: "qwen-turbo",
+                  sourcesFound: 0,
+                  hasVectorStore,
                 },
               })}\n\n`
             )
@@ -74,27 +96,46 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // Format context
-        const context = relevantDocs.map((doc) => doc.pageContent).join("\n\n");
+        // Format context from relevant documents
+        const context = relevantDocs.map((doc, i) => {
+          const metadata = doc.metadata as Record<string, unknown>;
+          return `[文档片段 ${i + 1}]:\n${doc.pageContent}`;
+        }).join("\n\n");
 
-        // Simulate streaming response (in production, use actual AI streaming)
-        const response = `根据文档内容，以下是关于您问题的回答：\n\n${context}`;
+        console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
 
-        // Stream response
-        const tokens = response.split(" ");
-        for (const token of tokens) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "token",
-                content: token + " ",
-                messageId,
-              })}\n\n`
-            )
-          );
-          // Small delay to simulate streaming
-          await new Promise((resolve) => setTimeout(resolve, 50));
+        // Create messages for the chat model
+        const systemMessage = new SystemMessage(
+          `你是一个智能文档助手。请根据以下文档内容回答用户的问题。如果文档中没有相关信息，请明确告知用户。\n\n文档内容：\n${context}`
+        );
+
+        const userMessage = new HumanMessage(question);
+
+        // Stream response from Qwen
+        console.log(`[Chat API] Calling Qwen API...`);
+        const response = await chatModel.stream([systemMessage, userMessage]);
+
+        let tokenCount = 0;
+
+        // Stream tokens
+        for await (const token of response) {
+          const content = token.content as string;
+          if (content) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "token",
+                  content: content,
+                  messageId,
+                })}\n\n`
+              )
+            );
+            tokenCount++;
+          }
         }
+
+        const processingTime = Date.now() - startTime;
+        console.log(`[Chat API] Response completed: ${tokenCount} tokens in ${processingTime}ms`);
 
         // Send end event
         controller.enqueue(
@@ -103,9 +144,10 @@ export async function POST(req: NextRequest) {
               type: "end",
               messageId,
               metadata: {
-                tokenCount: tokens.length,
-                processingTime: 500,
-                modelUsed: "gpt-3.5-turbo",
+                tokenCount,
+                processingTime,
+                modelUsed: "qwen-turbo",
+                sourcesFound: relevantDocs.length,
               },
             })}\n\n`
           )
@@ -113,14 +155,14 @@ export async function POST(req: NextRequest) {
 
         controller.close();
       } catch (error) {
-        console.error("Chat error:", error);
+        console.error("[Chat API] Error:", error);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
               type: "error",
               error: {
                 code: "AI_SERVICE_ERROR",
-                message: "对话服务暂时不可用",
+                message: error instanceof Error ? error.message : "对话服务暂时不可用",
               },
             })}\n\n`
           )

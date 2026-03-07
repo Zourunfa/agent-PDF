@@ -1,11 +1,11 @@
 /**
- * Chat Interface Component - 现代设计
+ * Chat Interface Component - 精致交互设计
  */
 
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MessageSquare, Sparkles, Loader2 } from "lucide-react";
+import { Send, MessageSquare, Sparkles, Loader2, RotateCcw, Zap } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
 import { usePDF } from "@/contexts/PDFContext";
 import { createUserMessage, createAssistantMessage } from "@/lib/chat/conversation";
@@ -162,14 +162,22 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
 
   if (!activePdfId) {
     return (
-      <div className={`flex h-full flex-col items-center justify-center ${className}`}>
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center h-20 w-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mx-auto">
-            <MessageSquare className="h-10 w-10 text-blue-600" />
+      <div className={`flex h-full flex-col items-center justify-center ${className} relative overflow-hidden`}>
+        {/* 背景装饰 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse-soft" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '1s' }} />
+        
+        <div className="relative text-center space-y-6 animate-fade-in-up">
+          <div className="relative inline-flex">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-3xl blur-xl animate-pulse-glow" />
+            <div className="relative flex items-center justify-center h-24 w-24 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-3xl border border-cyan-500/20 backdrop-blur-sm">
+              <MessageSquare className="h-12 w-12 text-cyan-400" />
+            </div>
           </div>
-          <div>
-            <p className="text-base font-medium text-gray-900 mb-1">开始对话</p>
-            <p className="text-sm text-gray-500">上传并选择 PDF 后开始智能对话</p>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold neon-text-cyan">开始智能对话</h3>
+            <p className="text-sm text-cyan-400/60 max-w-xs mx-auto">上传并选择 PDF 文档，开启 AI 驱动的文档分析之旅</p>
           </div>
         </div>
       </div>
@@ -179,18 +187,67 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
   const displayMessages = [...messages, ...localMessages];
 
   return (
-    <div className={`flex h-full flex-col ${className}`}>
+    <div className={`flex h-full flex-col ${className} relative`}>
+      {/* 顶部信息栏 */}
+      <div className="px-6 py-4 border-b border-cyan-500/20 glass-strong">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-8 w-8 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-lg border border-cyan-500/30">
+              <Sparkles className="h-4 w-4 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-cyan-400">AI 对话助手</h3>
+              <p className="text-xs text-cyan-400/50">基于文档内容的智能问答</p>
+            </div>
+          </div>
+          {displayMessages.length > 0 && (
+            <button
+              onClick={() => {
+                if (conversationId) {
+                  setActiveConversation(conversationId);
+                  setLocalMessages([]);
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/30 transition-all duration-200 group"
+              title="清空对话"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-cyan-400 group-hover:rotate-180 transition-transform duration-500" />
+              <span className="text-xs text-cyan-400">清空</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-auto px-6 py-6">
+      <div className="flex-1 overflow-auto px-6 py-6 scrollbar-thin relative">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center h-16 w-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mx-auto">
-                <Sparkles className="h-8 w-8 text-blue-600" />
+            <div className="text-center space-y-6 animate-fade-in-up">
+              <div className="relative inline-flex">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl blur-xl animate-pulse-glow" />
+                <div className="relative flex items-center justify-center h-20 w-20 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                  <Zap className="h-10 w-10 text-cyan-400" />
+                </div>
               </div>
-              <div>
-                <p className="text-base font-medium text-gray-900 mb-1">开始提问</p>
-                <p className="text-sm text-gray-500">询问关于文档的任何问题</p>
+              <div className="space-y-2">
+                <p className="text-base font-semibold neon-text-cyan">开始提问</p>
+                <p className="text-sm text-cyan-400/60 max-w-xs mx-auto">询问关于文档的任何问题，AI 将为您提供精准解答</p>
+              </div>
+              {/* 示例问题 */}
+              <div className="grid grid-cols-1 gap-2 max-w-md mx-auto mt-8">
+                {[
+                  "这份文档的主要内容是什么？",
+                  "帮我总结一下关键要点",
+                  "文档中提到了哪些重要数据？"
+                ].map((question, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setInput(question)}
+                    className="px-4 py-2.5 text-xs text-left text-cyan-400/70 hover:text-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-500/30 rounded-lg transition-all duration-200 hover:scale-[1.02]"
+                  >
+                    {question}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -209,45 +266,66 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white/80 backdrop-blur-xl px-6 py-5">
+      <div className="border-t border-cyan-500/20 glass-strong px-6 py-5">
         <div className="max-w-3xl mx-auto">
           <div className="relative">
-            <div className="flex items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl px-5 py-3.5 transition-all duration-200 focus-within:border-blue-500 focus-within:shadow-lg focus-within:shadow-blue-500/10">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="输入您的问题..."
-                disabled={isStreaming}
-                className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
-              />
+            {/* 输入框容器 */}
+            <div className="relative group">
+              {/* 发光边框效果 */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/50 to-purple-500/50 rounded-2xl opacity-0 group-focus-within:opacity-100 blur transition-opacity duration-300" />
+              
+              <div className="relative flex items-center gap-3 bg-slate-900/80 border border-cyan-500/30 rounded-2xl px-5 py-3.5 transition-all duration-200 backdrop-blur-sm group-focus-within:border-cyan-500/50 group-focus-within:bg-slate-900/90">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="输入您的问题..."
+                  disabled={isStreaming}
+                  className="flex-1 bg-transparent text-sm text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none disabled:opacity-50"
+                />
 
-              {isStreaming && (
-                <div className="flex items-center gap-2 pr-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="text-xs text-gray-500">思考中...</span>
-                </div>
-              )}
+                {isStreaming && (
+                  <div className="flex items-center gap-2 pr-2 animate-fade-in">
+                    <div className="relative">
+                      <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                      <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-sm animate-pulse" />
+                    </div>
+                    <span className="text-xs text-cyan-400/70">AI 思考中...</span>
+                  </div>
+                )}
 
-              <button
-                onClick={handleSubmit}
-                disabled={!input.trim() || isStreaming}
-                className={`flex-shrink-0 rounded-xl p-2.5 transition-all duration-200 ${
-                  input.trim() && !isStreaming
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-                title={input.trim() && !isStreaming ? "发送消息" : "输入消息后发送"}
-              >
-                <Send className="h-4 w-4" />
-              </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!input.trim() || isStreaming}
+                  className={`relative flex-shrink-0 rounded-xl p-2.5 transition-all duration-200 group/btn ${
+                    input.trim() && !isStreaming
+                      ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:scale-110 hover:rotate-12 neon-glow-cyan"
+                      : "bg-slate-800/50 text-cyan-400/30 cursor-not-allowed border border-cyan-500/10"
+                  }`}
+                  title={input.trim() && !isStreaming ? "发送消息 (Enter)" : "输入消息后发送"}
+                >
+                  <Send className={`h-4 w-4 transition-transform duration-200 ${
+                    input.trim() && !isStreaming ? "group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" : ""
+                  }`} />
+                  {input.trim() && !isStreaming && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl blur-md opacity-50 group-hover/btn:opacity-75 transition-opacity" />
+                  )}
+                </button>
+              </div>
             </div>
 
-            <p className="text-xs text-gray-400 text-center mt-3">
-              按 Enter 发送 · Shift + Enter 换行
-            </p>
+            {/* 提示文本 */}
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <p className="text-xs text-cyan-400/50">
+                <kbd className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded text-cyan-400/70">Enter</kbd> 发送
+              </p>
+              <span className="text-cyan-400/30">·</span>
+              <p className="text-xs text-cyan-400/50">
+                <kbd className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded text-cyan-400/70">Shift + Enter</kbd> 换行
+              </p>
+            </div>
           </div>
         </div>
       </div>

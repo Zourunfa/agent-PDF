@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parsePDF, isValidPDFText } from "@/lib/pdf/parser";
 import { splitTextWithMetadata } from "@/lib/pdf/text-splitter";
-import { createVectorStoreFromChunks } from "@/lib/langchain/vector-store";
+import { createVectorStoreFromChunks, getVectorStoreIds } from "@/lib/langchain/vector-store";
 import { ParseStatus } from "@/types/pdf";
 import { formatErrorResponse } from "@/lib/utils/errors";
 
@@ -19,9 +19,14 @@ const parsedPDFs = new Map<string, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { pdfId } = await req.json();
+    const body = await req.json();
+    const { pdfId } = body;
+
+    console.log(`[Parse API] ========== POST REQUEST RECEIVED ==========`);
+    console.log(`[Parse API] Request body:`, body);
 
     if (!pdfId) {
+      console.error(`[Parse API] ✗ No pdfId provided`);
       return NextResponse.json(
         {
           success: false,
@@ -35,9 +40,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[Parse API] ✓ Received parse request for PDF: ${pdfId}`);
+
     // Check if already parsed
     const existing = parsedPDFs.get(pdfId);
     if (existing && existing.parseStatus === ParseStatus.COMPLETED) {
+      console.log(`[Parse API] ✓ PDF ${pdfId} already parsed`);
       return NextResponse.json({
         success: true,
         data: {
@@ -57,10 +65,13 @@ export async function POST(req: NextRequest) {
       parseStatus: ParseStatus.PARSING,
       progress: 0,
     });
+    console.log(`[Parse API] ✓ Status set to PARSING`);
 
     // Parse PDF asynchronously (in production, use a job queue)
+    console.log(`[Parse API] → Starting async parse...`);
     parsePDFAsync(pdfId);
 
+    console.log(`[Parse API] ✓ Parse request accepted, returning response`);
     return NextResponse.json({
       success: true,
       data: {
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Parse error:", error);
+    console.error("[Parse API] ✗ Parse error:", error);
     return NextResponse.json(
       formatErrorResponse(error),
       { status: 500 }
@@ -79,32 +90,78 @@ export async function POST(req: NextRequest) {
 }
 
 async function parsePDFAsync(pdfId: string) {
+  console.log(`[Parse API] ============================================================`);
+  console.log(`[Parse API] ⚡ async function STARTED for PDF: ${pdfId}`);
+  console.log(`[Parse API] Current memory store keys: ${Array.from(parsedPDFs.keys())}`);
   try {
-    // TODO: Read file from temp storage and parse
-    // For now, simulate parsing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const fs = await import('fs/promises');
+    const path = await import('path');
 
-    // Simulate parsed content
-    const textContent = "This is sample PDF content that has been extracted.";
-    const pageCount = 1;
+    // Get temp file path
+    const tempDir = path.join(process.cwd(), 'tmp', 'pdf-chat');
+    const filePath = path.join(tempDir, `${pdfId}.pdf`);
+
+    console.log(`[Parse API] Reading PDF from: ${filePath}`);
+
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+      console.log(`[Parse API] ✓ File exists`);
+    } catch {
+      console.error(`[Parse API] ✗ PDF file not found: ${filePath}`);
+      parsedPDFs.set(pdfId, {
+        textContent: "",
+        pageCount: 0,
+        parseStatus: ParseStatus.FAILED,
+        progress: 0,
+      });
+      return;
+    }
+
+    // Parse PDF
+    const buffer = await fs.readFile(filePath);
+    console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes`);
+
+    const { text, pages } = await parsePDF(buffer);
+    console.log(`[Parse API] ✓ Parsed ${text.length} characters from ${pages} pages`);
+
+    if (!isValidPDFText(text)) {
+      throw new Error("PDF 解析失败或内容为空");
+    }
 
     // Update status
     parsedPDFs.set(pdfId, {
-      textContent,
-      pageCount,
+      textContent: text,
+      pageCount: pages,
       parseStatus: ParseStatus.COMPLETED,
       progress: 100,
     });
 
     // Split into chunks and create vector store
+    console.log(`[Parse API] Splitting text into chunks...`);
     const chunks = await splitTextWithMetadata(
-      textContent,
-      { pdfId, source: "pdf" }
+      text,
+      { pdfId, source: "pdf", pageCount: pages }
     );
+    console.log(`[Parse API] ✓ Created ${chunks.length} chunks`);
+    console.log(`[Parse API] First chunk preview: ${chunks[0]?.content.substring(0, 100)}...`);
 
-    await createVectorStoreFromChunks(pdfId, chunks);
+    console.log(`[Parse API] Creating vector store...`);
+    console.log(`[Parse API] API Key configured: ${!!process.env.ALIBABA_API_KEY || !!process.env.QWEN_API_KEY}`);
+
+    try {
+      await createVectorStoreFromChunks(pdfId, chunks);
+      console.log(`[Parse API] ✓ Vector store created successfully`);
+    } catch (vectorError) {
+      console.error(`[Parse API] ✗ Vector store creation failed:`, vectorError);
+      // Continue anyway - text is parsed, just vector search won't work
+    }
+
+    console.log(`[Parse API] ✓ PDF parsed successfully: ${pdfId}, ${pages} pages, ${chunks.length} chunks`);
+    console.log(`[Parse API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
+    console.log(`[Parse API] ============================================================`);
   } catch (error) {
-    console.error("Async parse error:", error);
+    console.error("[Parse API] ✗ Async parse error:", error);
     parsedPDFs.set(pdfId, {
       textContent: "",
       pageCount: 0,

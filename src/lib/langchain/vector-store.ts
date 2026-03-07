@@ -3,7 +3,6 @@
  */
 
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { Document } from "langchain/document";
 import { embeddings } from "./config";
 
@@ -13,10 +12,19 @@ import { embeddings } from "./config";
 const vectorStoreCache = new Map<string, MemoryVectorStore>();
 
 /**
+ * Get all vector store IDs for debugging
+ */
+export function getVectorStoreIds(): string[] {
+  return Array.from(vectorStoreCache.keys());
+}
+
+/**
  * Get or create vector store for a PDF
  */
 export async function getVectorStore(pdfId: string): Promise<MemoryVectorStore | null> {
-  return vectorStoreCache.get(pdfId) || null;
+  const store = vectorStoreCache.get(pdfId);
+  console.log(`[VectorStore] Get vector store for ${pdfId}:`, store ? "Found" : "Not found");
+  return store || null;
 }
 
 /**
@@ -26,8 +34,10 @@ export async function createVectorStore(
   pdfId: string,
   documents: Document[]
 ): Promise<MemoryVectorStore> {
+  console.log(`[VectorStore] Creating vector store for ${pdfId} with ${documents.length} documents`);
   const vectorStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
   vectorStoreCache.set(pdfId, vectorStore);
+  console.log(`[VectorStore] Vector store created successfully for ${pdfId}`);
   return vectorStore;
 }
 
@@ -38,6 +48,12 @@ export async function createVectorStoreFromChunks(
   pdfId: string,
   chunks: Array<{ content: string; metadata: Record<string, unknown> }>
 ): Promise<MemoryVectorStore> {
+  console.log(`[VectorStore] Creating vector store from ${chunks.length} chunks for ${pdfId}`);
+  console.log(`[VectorStore] API Key check:`, {
+    alibaba: !!process.env.ALIBABA_API_KEY,
+    qwen: !!process.env.QWEN_API_KEY,
+  });
+
   const documents = chunks.map(
     (chunk) =>
       new Document({
@@ -46,7 +62,21 @@ export async function createVectorStoreFromChunks(
       })
   );
 
-  return createVectorStore(pdfId, documents);
+  try {
+    const vectorStore = await createVectorStore(pdfId, documents);
+    console.log(`[VectorStore] ✓ Successfully created and cached vector store`);
+    return vectorStore;
+  } catch (error) {
+    console.error(`[VectorStore] ✗ Failed to create vector store:`, error);
+    if (error instanceof Error) {
+      console.error(`[VectorStore] Error message: ${error.message}`);
+      if (error.message.includes("API key") || error.message.includes("401") || error.message.includes("403")) {
+        console.error(`[VectorStore] ⚠️ API Key issue detected! Please check your ALIBABA_API_KEY or QWEN_API_KEY`);
+        console.error(`[VectorStore] Get free API key at: https://dashscope.aliyun.com/`);
+      }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -57,19 +87,31 @@ export async function searchSimilarDocuments(
   query: string,
   k: number = 4
 ): Promise<Document[]> {
+  console.log(`[VectorStore] Searching for "${query}" in ${pdfId} (k=${k})`);
   const vectorStore = await getVectorStore(pdfId);
+
   if (!vectorStore) {
+    console.warn(`[VectorStore] No vector store found for ${pdfId}. Available IDs:`, getVectorStoreIds());
     return [];
   }
 
   const results = await vectorStore.similaritySearchWithScore(query, k);
-  return results.map(([doc]) => doc);
+  console.log(`[VectorStore] Found ${results.length} results for query "${query}"`);
+
+  // Filter out results with very low similarity scores
+  const filteredResults = results.filter(([, score]) => score > 0.5);
+  if (filteredResults.length < results.length) {
+    console.log(`[VectorStore] Filtered ${results.length - filteredResults.length} low-score results`);
+  }
+
+  return filteredResults.map(([doc]) => doc);
 }
 
 /**
  * Clear vector store for a PDF
  */
 export function clearVectorStore(pdfId: string): void {
+  console.log(`[VectorStore] Clearing vector store for ${pdfId}`);
   vectorStoreCache.delete(pdfId);
 }
 
@@ -77,5 +119,6 @@ export function clearVectorStore(pdfId: string): void {
  * Clear all vector stores
  */
 export function clearAllVectorStores(): void {
+  console.log(`[VectorStore] Clearing all vector stores`);
   vectorStoreCache.clear();
 }

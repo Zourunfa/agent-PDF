@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const pdfId = randomUUID();
     const taskId = randomUUID();
     const sanitizedName = validation.sanitizedName || file.name;
-    const tempFileName = generateTempFileName(sanitizedName);
+    const tempFileName = generateTempFileName(pdfId); // Use pdfId as filename
 
     // Save file to temp directory
     const arrayBuffer = await file.arrayBuffer();
