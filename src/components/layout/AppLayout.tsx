@@ -4,13 +4,14 @@
 
 "use client";
 
-import React from "react";
-import { Space, Divider } from "antd";
+import React, { useState } from "react";
+import { Space, Divider, Tabs } from "antd";
 import { FileTextOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { PDFProvider } from "@/contexts/PDFContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { PDFList } from "@/components/pdf/PDFList";
 import { PDFViewer } from "@/components/pdf/PDFViewer";
+import { PDFPreview } from "@/components/pdf/PDFPreview";
 import { PDFUploaderPro } from "@/components/pdf/PDFUploaderPro";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 
@@ -121,7 +122,23 @@ export function AppLayout() {
 
               {/* PDF Viewer */}
               <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
-                <PDFViewer />
+                <Tabs
+                  defaultActiveKey="preview"
+                  items={[
+                    {
+                      key: 'preview',
+                      label: 'PDF 预览',
+                      children: <PDFPreview />,
+                    },
+                    {
+                      key: 'text',
+                      label: '文本内容',
+                      children: <PDFViewer />,
+                    },
+                  ]}
+                  style={{ height: '100%' }}
+                  tabBarStyle={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}
+                />
               </div>
             </div>
 
