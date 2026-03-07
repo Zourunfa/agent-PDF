@@ -95,10 +95,28 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
           // Check if scanned PDF
           if (cleanText.length < 50) {
             console.warn(`[Parser] ⚠️ Insufficient text (${cleanText.length} chars), likely scanned PDF`);
-            reject(new Error(
-              "PDF_SCANNED"  // Use error code for better handling
-            ));
-            return;
+            console.log(`[Parser] → Attempting OCR processing...`);
+            
+            // Try OCR
+            try {
+              const { parseScannedPDF, isOCRAvailable } = await import("./ocr-parser");
+              
+              if (!isOCRAvailable()) {
+                console.error("[Parser] ✗ OCR not available");
+                reject(new Error("PDF_SCANNED"));
+                return;
+              }
+              
+              console.log("[Parser] ✓ OCR available, starting OCR processing...");
+              const ocrResult = await parseScannedPDF(buffer);
+              console.log(`[Parser] ✓ OCR completed: ${ocrResult.text.length} chars`);
+              resolve(ocrResult);
+              return;
+            } catch (ocrError) {
+              console.error("[Parser] ✗ OCR failed:", ocrError);
+              reject(new Error("PDF_SCANNED"));
+              return;
+            }
           }
 
           resolve({
