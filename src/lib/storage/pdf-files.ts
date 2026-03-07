@@ -49,8 +49,10 @@ export async function addPDFFile(pdf: PDFFile): Promise<void> {
     await setPDF(pdf.id, pdf);
     console.log(`[PDF Storage] ✓ Persisted PDF ${pdf.id} to Redis`);
   } catch (redisError) {
-    console.log(`[PDF Storage] Redis failed, using filesystem fallback:`, redisError);
-    
+    const errorMsg = redisError instanceof Error ? redisError.message : String(redisError);
+    console.error(`[PDF Storage] ⚠️ Redis failed: ${errorMsg}`);
+    console.log(`[PDF Storage] Using filesystem fallback...`);
+
     // Fallback: Persist to filesystem
     try {
       await ensureStorageDir();

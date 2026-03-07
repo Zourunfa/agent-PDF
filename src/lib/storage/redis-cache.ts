@@ -8,9 +8,20 @@ import { Redis } from "@upstash/redis";
 
 // Initialize Upstash Redis client
 // Vercel + Upstash integration provides these env vars
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "";
+
+// Log Redis configuration at startup
+console.log('[Redis] Initializing with config:', {
+  hasUrl: !!REDIS_URL,
+  hasToken: !!REDIS_TOKEN,
+  urlPrefix: REDIS_URL ? REDIS_URL.substring(0, 30) + '...' : 'none',
+  tokenPrefix: REDIS_TOKEN ? REDIS_TOKEN.substring(0, 10) + '...' : 'none',
+});
+
 const redis = new Redis({
-  url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  url: REDIS_URL,
+  token: REDIS_TOKEN,
 });
 
 const PDF_PREFIX = "pdf:";
@@ -21,9 +32,17 @@ const PDF_LIST_KEY = "pdf:list";
  * Store PDF metadata and content in Redis
  */
 export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
+  console.log(`[Redis] Attempting to store PDF ${pdfId} to Redis...`);
+
+  // Check if Redis is properly configured
+  if (!REDIS_URL || !REDIS_TOKEN) {
+    console.error(`[Redis] ✗ Redis not configured: URL=${!!REDIS_URL}, Token=${!!REDIS_TOKEN}`);
+    throw new Error('Redis not configured');
+  }
+
   try {
     const key = `${PDF_PREFIX}${pdfId}`;
-    
+
     // Serialize PDF data (exclude base64Data to save space)
     const data = {
       id: pdf.id,
@@ -47,6 +66,10 @@ export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
     console.log(`[Redis] ✓ Stored PDF ${pdfId}`);
   } catch (error) {
     console.error(`[Redis] ✗ Failed to store PDF ${pdfId}:`, error);
+    if (error instanceof Error) {
+      console.error(`[Redis] Error message: ${error.message}`);
+      console.error(`[Redis] Error stack: ${error.stack}`);
+    }
     throw error;
   }
 }
