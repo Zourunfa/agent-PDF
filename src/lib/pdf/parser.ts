@@ -21,18 +21,25 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
     return parseScannedPDF(buffer);
   }
 
+  const parserStartTime = Date.now();
+  console.log("[Parser] ⏱️ Parser timer started");
   console.log("[Parser] Parsing PDF with pdf2json...");
   console.log("[Parser] Buffer size:", buffer.length, "bytes");
 
   try {
+    const importStart = Date.now();
     // Dynamic import to avoid webpack issues
     const PDFParser = (await import("pdf2json")).default;
-    console.log("[Parser] ✓ PDFParser imported");
+    const importTime = Date.now() - importStart;
+    console.log(`[Parser] ✓ PDFParser imported (${importTime}ms)`);
 
     return new Promise(async (resolve, reject) => {
+      const promiseStart = Date.now();
+      
       // Increase timeout to 6 seconds for Vercel
       const timeout = setTimeout(() => {
-        console.error("[Parser] ✗ Timeout after 6 seconds");
+        const timeoutTime = Date.now() - promiseStart;
+        console.error(`[Parser] ✗ Timeout after 6 seconds (actual: ${timeoutTime}ms)`);
         reject(new Error("PDF 解析超时 - 文件可能过于复杂"));
       }, 6000);
 
@@ -40,14 +47,17 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
 
       pdfParser.on("pdfParser_dataError", (errData: any) => {
         clearTimeout(timeout);
-        console.error("[Parser] ✗ Parse error:", errData);
+        const errorTime = Date.now() - promiseStart;
+        console.error(`[Parser] ✗ Parse error after ${errorTime}ms:`, errData);
         reject(new Error(`PDF 解析错误: ${errData.parserError || errData}`));
       });
 
       pdfParser.on("pdfParser_dataReady", async (pdfData: any) => {
         clearTimeout(timeout);
-        console.log("[Parser] ✓ Parse complete");
+        const parseTime = Date.now() - promiseStart;
+        console.log(`[Parser] ✓ Parse complete (${parseTime}ms)`);
         
+        const processStart = Date.now();
         try {
           let fullText = "";
           let pageCount = 0;
@@ -72,7 +82,15 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
           }
 
           const cleanText = fullText.trim();
+          const processTime = Date.now() - processStart;
+          const totalParserTime = Date.now() - parserStartTime;
+          
           console.log(`[Parser] ✓ Extracted ${cleanText.length} chars from ${pageCount} pages`);
+          console.log(`[Parser] ⏱️ Parser timing:`);
+          console.log(`[Parser]   - Import: ${importTime}ms`);
+          console.log(`[Parser]   - Parse: ${parseTime}ms`);
+          console.log(`[Parser]   - Process: ${processTime}ms`);
+          console.log(`[Parser]   - Total: ${totalParserTime}ms`);
 
           // Check if scanned PDF
           if (cleanText.length < 50) {
@@ -98,8 +116,11 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
       });
 
       try {
+        const bufferStart = Date.now();
         console.log("[Parser] → Calling parseBuffer...");
         pdfParser.parseBuffer(buffer);
+        const bufferTime = Date.now() - bufferStart;
+        console.log(`[Parser] → parseBuffer called (${bufferTime}ms), waiting for events...`);
       } catch (parseError) {
         clearTimeout(timeout);
         console.error("[Parser] ✗ parseBuffer error:", parseError);
