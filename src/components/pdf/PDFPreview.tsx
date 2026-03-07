@@ -12,7 +12,7 @@ import * as pdfjsLib from "pdfjs-dist";
 
 // 设置 PDF.js worker
 if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 }
 
 interface PDFPreviewProps {
@@ -34,10 +34,11 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
 
   // 加载 PDF 文档
   useEffect(() => {
-    if (!activePdf || activePdf.parseStatus !== ParseStatus.COMPLETED) {
+    if (!activePdf) {
       return;
     }
 
+    // 允许在任何状态下预览PDF（PENDING, PARSING, COMPLETED）
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
@@ -46,15 +47,25 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
         // 构建PDF文件URL
         const pdfUrl = `/api/pdf/${activePdf.id}`;
 
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        console.log('[PDFPreview] Loading PDF from:', pdfUrl);
+        console.log('[PDFPreview] PDF status:', activePdf.parseStatus);
+
+        const loadingTask = pdfjsLib.getDocument({
+          url: pdfUrl,
+          cMapUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        });
+
         const pdf = await loadingTask.promise;
+
+        console.log('[PDFPreview] PDF loaded successfully, pages:', pdf.numPages);
 
         setPdfDoc(pdf);
         setTotalPages(pdf.numPages);
         setCurrentPage(1);
       } catch (err) {
-        console.error("加载PDF失败:", err);
-        setError("加载PDF失败");
+        console.error("[PDFPreview] 加载PDF失败:", err);
+        setError("加载PDF失败: " + (err as Error).message);
       } finally {
         setLoading(false);
       }
@@ -126,26 +137,21 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
     );
   }
 
-  // 正在解析
-  if (activePdf.parseStatus !== ParseStatus.COMPLETED) {
-    return (
-      <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
-        <div className="text-center fade-in-up">
-          <Loader2 className="h-7 w-7 text-indigo-400 animate-spin mx-auto mb-3" />
-          <p className="text-xs text-indigo-500 font-semibold">
-            {activePdf.parseStatus === ParseStatus.PARSING ? "解析中..." : "准备就绪"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // 加载失败
   if (error) {
     return (
       <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
         <div className="text-center">
           <p className="text-xs text-red-500 font-medium">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setPdfDoc(null);
+            }}
+            className="mt-2 px-3 py-1 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+          >
+            重试
+          </button>
         </div>
       </div>
     );
@@ -218,8 +224,21 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
             <p className="text-xs text-indigo-500">加载中...</p>
           </div>
         ) : (
-          <div className="relative shadow-lg rounded-lg overflow-hidden">
-            <canvas ref={canvasRef} className="max-w-full h-auto" />
+          <div className="relative">
+            {/* 解析状态指示器 */}
+            {activePdf.parseStatus === ParseStatus.PARSING && (
+              <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-amber-500 text-white text-[10px] font-semibold rounded-full shadow-lg animate-pulse">
+                解析中...
+              </div>
+            )}
+            {activePdf.parseStatus === ParseStatus.PENDING && (
+              <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded-full shadow-lg">
+                等待解析
+              </div>
+            )}
+            <div className="relative shadow-lg rounded-lg overflow-hidden bg-white">
+              <canvas ref={canvasRef} className="max-w-full h-auto" />
+            </div>
           </div>
         )}
       </div>
