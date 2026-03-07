@@ -88,17 +88,18 @@ export async function POST(req: NextRequest) {
     });
     console.log(`[Parse API] ✓ Status set to PARSING`);
 
-    // Parse PDF asynchronously (in production, use a job queue)
-    console.log(`[Parse API] → Starting async parse...`);
-    parsePDFAsync(pdfId);
+    // Parse PDF synchronously (required for Vercel serverless)
+    console.log(`[Parse API] → Starting synchronous parse...`);
+    const parseResult = await parsePDFAsyncInternal(pdfId);
 
-    console.log(`[Parse API] ✓ Parse request accepted, returning response`);
+    console.log(`[Parse API] ✓ Parse completed, returning response`);
     return NextResponse.json({
       success: true,
       data: {
         pdfId,
-        parseStatus: ParseStatus.PARSING,
-        estimatedTime: 3,
+        parseStatus: parseResult.parseStatus,
+        textContent: parseResult.textContent,
+        pageCount: parseResult.pageCount,
       },
     });
   } catch (error) {
@@ -161,7 +162,11 @@ async function parsePDFAsync(pdfId: string) {
   }
 }
 
-async function parsePDFAsyncInternal(pdfId: string) {
+async function parsePDFAsyncInternal(pdfId: string): Promise<{
+  parseStatus: ParseStatus;
+  textContent: string;
+  pageCount: number;
+}> {
   try {
     const overallStartTime = Date.now();
     console.log(`[Parse API] ⏱️ Overall timer started at ${new Date().toISOString()}`);
@@ -186,13 +191,11 @@ async function parsePDFAsyncInternal(pdfId: string) {
       console.log(`[Parse API] ✓ File exists (${Date.now() - fileCheckStart}ms)`);
     } catch {
       console.error(`[Parse API] ✗ PDF file not found: ${filePath}`);
-      parsedPDFs.set(pdfId, {
+      return {
+        parseStatus: ParseStatus.FAILED,
         textContent: "",
         pageCount: 0,
-        parseStatus: ParseStatus.FAILED,
-        progress: 0,
-      });
-      return;
+      };
     }
 
     // Parse PDF
@@ -292,6 +295,13 @@ async function parsePDFAsyncInternal(pdfId: string) {
     console.log(`[Parse API]   - Vector store: ${Date.now() - vectorStart}ms`);
     console.log(`[Parse API]   - TOTAL: ${totalTime}ms`);
     console.log(`[Parse API] ============================================================`);
+
+    // Return result
+    return {
+      parseStatus: ParseStatus.COMPLETED,
+      textContent: text,
+      pageCount: pages,
+    };
   } catch (error) {
     console.error("[Parse API] ✗ Async parse error:", error);
     if (error instanceof Error) {
