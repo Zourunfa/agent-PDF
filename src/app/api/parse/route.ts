@@ -202,12 +202,28 @@ async function parsePDFAsync(pdfId: string) {
     console.log(`[Parse API] ============================================================`);
   } catch (error) {
     console.error("[Parse API] ✗ Async parse error:", error);
+    if (error instanceof Error) {
+      console.error("[Parse API] ✗ Error message:", error.message);
+      console.error("[Parse API] ✗ Error stack:", error.stack);
+    }
     parsedPDFs.set(pdfId, {
       textContent: "",
       pageCount: 0,
       parseStatus: ParseStatus.FAILED,
       progress: 0,
     });
+    
+    // Also try to update PDF file storage to mark as failed
+    try {
+      const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
+      const pdfFile = await getPDFFile(pdfId);
+      if (pdfFile) {
+        pdfFile.parseStatus = ParseStatus.FAILED;
+        await addPDFFile(pdfFile);
+      }
+    } catch (storageError) {
+      console.error("[Parse API] ✗ Failed to update storage with error status:", storageError);
+    }
   }
 }
 
