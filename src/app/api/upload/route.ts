@@ -11,11 +11,21 @@ import { ParseStatus } from "@/types/pdf";
 import { formatErrorResponse } from "@/lib/utils/errors";
 
 export async function POST(req: NextRequest) {
+  console.log('📬 收到上传请求');
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
+    console.log('📋 解析的文件信息:', {
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      hasFile: !!file,
+    });
+
     if (!file) {
+      console.error('❌ 未找到文件');
       return NextResponse.json(
         {
           success: false,
@@ -31,7 +41,10 @@ export async function POST(req: NextRequest) {
 
     // Validate file
     const validation = validatePDFFile(file);
+    console.log('🔍 文件验证结果:', validation);
+
     if (!validation.valid) {
+      console.error('❌ 文件验证失败:', validation.error);
       return NextResponse.json(
         {
           success: false,
@@ -51,10 +64,15 @@ export async function POST(req: NextRequest) {
     const sanitizedName = validation.sanitizedName || file.name;
     const tempFileName = generateTempFileName(pdfId); // Use pdfId as filename
 
+    console.log('🆔 生成ID:', { pdfId, taskId, tempFileName });
+
     // Save file to temp directory
+    console.log('💾 开始保存文件到临时目录...');
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const tempPath = await saveTempFile(buffer, tempFileName);
+
+    console.log('✅ 文件已保存到:', tempPath);
 
     // Create PDF file record
     const pdfFile = {
@@ -70,8 +88,16 @@ export async function POST(req: NextRequest) {
       tempPath,
     };
 
+    console.log('📝 创建PDF记录:', {
+      id: pdfFile.id,
+      fileName: pdfFile.fileName,
+      fileSize: pdfFile.fileSize,
+    });
+
     // Store PDF file in memory storage
     await addPDFFile(pdfFile);
+
+    console.log('✅ 上传完成，准备返回响应');
 
     return NextResponse.json({
       success: true,
@@ -86,7 +112,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("💥 Upload error:", error);
     return NextResponse.json(
       formatErrorResponse(error),
       { status: 500 }
