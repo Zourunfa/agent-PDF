@@ -22,19 +22,29 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
 
   try {
     console.log("[Parser] Parsing PDF with pdf2json...");
+    console.log("[Parser] Buffer size:", buffer.length, "bytes");
 
     // Dynamic import to avoid webpack issues
     const PDFParser = (await import("pdf2json")).default;
 
     return new Promise(async (resolve, reject) => {
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        console.error("[Parser] ✗ PDF parsing timeout after 7 seconds");
+        reject(new Error("PDF parsing timeout - file may be too complex or corrupted"));
+      }, 7000);
+
       const pdfParser = new PDFParser(null, true);
 
       pdfParser.on("pdfParser_dataError", (errData: any) => {
+        clearTimeout(timeout);
         console.error("[Parser] PDF parse error:", errData);
         reject(new Error(`PDF parse error: ${errData.parserError || errData}`));
       });
 
       pdfParser.on("pdfParser_dataReady", async (pdfData: any) => {
+        clearTimeout(timeout);
+        console.log("[Parser] ✓ pdfParser_dataReady event fired");
         try {
           let fullText = "";
           let pageCount = 0;
@@ -107,7 +117,15 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
         }
       });
 
-      pdfParser.parseBuffer(buffer);
+      try {
+        console.log("[Parser] Calling parseBuffer...");
+        pdfParser.parseBuffer(buffer);
+        console.log("[Parser] parseBuffer called, waiting for events...");
+      } catch (parseError) {
+        clearTimeout(timeout);
+        console.error("[Parser] parseBuffer error:", parseError);
+        reject(parseError);
+      }
     });
   } catch (error) {
     console.error("[Parser] Error:", error);
