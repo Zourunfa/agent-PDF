@@ -9,8 +9,10 @@ export interface ParsedPDF {
 }
 
 /**
- * Parse PDF using pdf2json (Node.js native, no webpack issues)
- * Falls back to OCR for scanned documents
+ * Parse PDF using multiple parsers with fallback
+ * 1. Try pdfjs-dist (most reliable)
+ * 2. Fallback to pdf2json
+ * 3. Fallback to OCR for scanned documents
  */
 export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise<ParsedPDF> {
   // If OCR is explicitly requested, use it directly
@@ -20,6 +22,25 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
     return parseScannedPDF(buffer);
   }
 
+  // Try pdfjs-dist first (most reliable)
+  try {
+    console.log("[Parser] Attempting PDF.js parser...");
+    const { parsePDFWithPDFJS } = await import("./pdfjs-parser");
+    const result = await parsePDFWithPDFJS(buffer);
+    
+    // Check if text is valid
+    if (result.text.length >= 50) {
+      console.log("[Parser] ✓ PDF.js parsing successful");
+      return result;
+    }
+    
+    console.warn("[Parser] ⚠️ PDF.js returned insufficient text, trying pdf2json...");
+  } catch (pdfjsError) {
+    console.error("[Parser] PDF.js failed:", pdfjsError);
+    console.log("[Parser] → Falling back to pdf2json...");
+  }
+
+  // Fallback to pdf2json
   try {
     console.log("[Parser] Parsing PDF with pdf2json...");
     console.log("[Parser] Buffer size:", buffer.length, "bytes");

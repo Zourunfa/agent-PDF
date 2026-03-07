@@ -24,6 +24,13 @@ const nextConfig = {
         'canvas',
       ];
     }
+    
+    // Configure pdfjs-dist to work with webpack
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'pdfjs-dist/build/pdf.worker.entry': 'pdfjs-dist/legacy/build/pdf.worker.entry',
+    };
+    
     return config;
   },
 };
