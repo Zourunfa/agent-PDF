@@ -1,115 +1,131 @@
 /**
- * PDF List Component - 现代设计
+ * PDF List Component - Ant Design
  */
 
 "use client";
 
 import React from "react";
-import { FileText, Trash2, Loader2, CheckCircle2 } from "lucide-react";
+import { List, Typography, Tag, Button, Space, Empty } from "antd";
+import { FileTextOutlined, DeleteOutlined, LoadingOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { usePDF } from "@/contexts/PDFContext";
 import { ParseStatus } from "@/types/pdf";
-import { cn } from "@/lib/utils/cn";
 
-interface PDFListProps {
-  className?: string;
-}
+const { Text } = Typography;
 
-export function PDFList({ className = "" }: PDFListProps) {
+export function PDFList() {
   const { pdfs, activePdfId, setActivePdf, removePDF } = usePDF();
 
-  if (pdfs.size === 0) {
-    return null;
+  const pdfList = Array.from(pdfs.values());
+
+  if (pdfList.length === 0) {
+    return (
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description="暂无文档"
+        style={{ padding: '24px 0' }}
+      />
+    );
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-        已上传文档 ({pdfs.size})
-      </h3>
-      {Array.from(pdfs.values()).map((pdf, index) => {
+    <List
+      size="small"
+      dataSource={pdfList}
+      renderItem={(pdf) => {
         const isActive = pdf.id === activePdfId;
         const isParsing = pdf.parseStatus === ParseStatus.PARSING;
         const isCompleted = pdf.parseStatus === ParseStatus.COMPLETED;
 
         return (
-          <div
+          <List.Item
             key={pdf.id}
-            className={`group relative flex items-center gap-3 rounded-xl p-3.5 transition-all duration-200 cursor-pointer animate-fade-in-up ${
-              isActive
-                ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-soft-lg"
-                : "bg-white hover:bg-slate-50 border border-slate-200 hover:border-cyan-200 hover:shadow-soft"
-            }`}
             onClick={() => setActivePdf(pdf.id)}
-            style={{ animationDelay: `${index * 50}ms` }}
+            style={{
+              cursor: 'pointer',
+              backgroundColor: isActive ? '#F0F5FF' : 'transparent',
+              borderRadius: 8,
+              marginBottom: 4,
+              padding: '8px 12px',
+              border: isActive ? '1px solid #ADC6FF' : '1px solid transparent',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.backgroundColor = '#FAFAFA';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }
+            }}
           >
-            {/* File Icon */}
-            <div className={`flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center transition-all shadow-sm ${
-              isActive ? "bg-white/20" : "bg-gradient-to-br from-blue-50 to-cyan-50"
-            }`}>
-              {isParsing ? (
-                <Loader2 className={`h-5 w-5 animate-spin ${isActive ? "text-white" : "text-blue-600"}`} />
-              ) : isCompleted ? (
-                <CheckCircle2 className={`h-5 w-5 ${isActive ? "text-white" : "text-emerald-600"}`} />
-              ) : (
-                <FileText className={`h-5 w-5 ${isActive ? "text-white" : "text-blue-600"}`} />
-              )}
-            </div>
-
-            {/* File Info */}
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate tracking-tight ${
-                isActive ? "text-white" : "text-slate-900"
-              }`}>
-                {pdf.fileName}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className={`text-xs ${
-                  isActive ? "text-white/80" : "text-slate-500"
-                }`}>
-                  {(pdf.fileSize / 1024 / 1024).toFixed(2)} MB
-                </p>
-                {pdf.pageCount && (
-                  <>
-                    <span className={`text-xs ${isActive ? "text-white/60" : "text-slate-300"}`}>·</span>
-                    <p className={`text-xs ${isActive ? "text-white/80" : "text-slate-500"}`}>
-                      {pdf.pageCount} 页
-                    </p>
-                  </>
-                )}
-                {isParsing && (
-                  <>
-                    <span className={`text-xs ${isActive ? "text-white/60" : "text-slate-300"}`}>·</span>
-                    <p className={`text-xs ${isActive ? "text-white/80" : "text-blue-600"}`}>
-                      解析中...
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Delete Button */}
-            <button
+            <List.Item.Meta
+              avatar={
+                isParsing ? (
+                  <LoadingOutlined style={{ fontSize: 20, color: '#6366F1' }} />
+                ) : isCompleted ? (
+                  <CheckCircleOutlined style={{ fontSize: 20, color: '#10B981' }} />
+                ) : (
+                  <FileTextOutlined style={{ fontSize: 20, color: '#6366F1' }} />
+                )
+              }
+              title={
+                <Text
+                  strong={isActive}
+                  ellipsis
+                  style={{
+                    fontSize: 13,
+                    color: isActive ? '#1E1B4B' : '#4B5563',
+                  }}
+                >
+                  {pdf.fileName}
+                </Text>
+              }
+              description={
+                <Space size={4} style={{ fontSize: 11 }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {(pdf.fileSize / 1024 / 1024).toFixed(1)} MB
+                  </Text>
+                  {pdf.pageCount && (
+                    <>
+                      <Text type="secondary">·</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {pdf.pageCount} 页
+                      </Text>
+                    </>
+                  )}
+                  {isParsing && (
+                    <>
+                      <Text type="secondary">·</Text>
+                      <Tag color="processing" style={{ fontSize: 10, margin: 0 }}>
+                        解析中
+                      </Tag>
+                    </>
+                  )}
+                </Space>
+              }
+            />
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
               onClick={(e) => {
                 e.stopPropagation();
                 removePDF(pdf.id);
               }}
-              className={`flex-shrink-0 rounded-lg p-2 transition-all opacity-0 group-hover:opacity-100 ${
-                isActive
-                  ? "hover:bg-white/20"
-                  : "hover:bg-red-50 hover:text-red-600"
-              }`}
-              title="删除文件"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-
-            {/* Active Indicator */}
-            {isActive && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-white shadow-soft" />
-            )}
-          </div>
+              style={{ opacity: 0.6 }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.6';
+              }}
+            />
+          </List.Item>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }

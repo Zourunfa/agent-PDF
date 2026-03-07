@@ -1,73 +1,144 @@
 /**
- * App Layout Component - 科幻风格
+ * App Layout - Ant Design
  */
 
 "use client";
 
 import React from "react";
+import { Space, Divider } from "antd";
+import { FileTextOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { PDFProvider } from "@/contexts/PDFContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { PDFList } from "@/components/pdf/PDFList";
 import { PDFViewer } from "@/components/pdf/PDFViewer";
-import { PDFUploader } from "@/components/pdf/PDFUploader";
+import { PDFUploaderPro } from "@/components/pdf/PDFUploaderPro";
 import { ChatInterface } from "@/components/chat/ChatInterface";
-import { FileText, Zap } from "lucide-react";
 
-interface AppLayoutProps {
-  children?: React.ReactNode;
-}
-
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout() {
   return (
     <PDFProvider>
       <ChatProvider>
-        <div className="flex h-screen flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          {/* Header - 科幻风格 */}
-          <header className="h-16 glass-strong border-b border-cyan-500/20 relative overflow-hidden">
-            {/* 扫描线动画 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent pointer-events-none" />
+        <div style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)'
+        }}>
+          {/* Header */}
+          <div
+            style={{
+              height: 64,
+              flexShrink: 0,
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+              borderBottom: '1px solid #E5E7EB',
+              padding: '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              zIndex: 10
+            }}
+          >
+            <Space size={12}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                <FileTextOutlined style={{ fontSize: 20, color: '#fff' }} />
+              </div>
+              <div>
+                <div style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', 
+                  WebkitBackgroundClip: 'text', 
+                  WebkitTextFillColor: 'transparent',
+                  lineHeight: 1.2
+                }}>
+                  PDF AI Chat
+                </div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.2 }}>智能文档分析</div>
+              </div>
+            </Space>
             
-            <div className="relative flex h-full items-center justify-between px-8">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full animate-pulse-glow" />
-                  <div className="relative flex items-center justify-center h-10 w-10 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-lg neon-glow-cyan">
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold neon-text-cyan tracking-wider">PDF AI CHAT</h1>
-                  <p className="text-xs text-cyan-400/60">智能文档分析系统</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-2 glass rounded-full neon-border-cyan">
-                  <Zap className="h-3 w-3 text-cyan-400" />
-                  <span className="text-xs font-medium text-cyan-400">通义千问驱动</span>
-                </div>
-              </div>
-            </div>
-          </header>
+            <Space size={8} style={{ 
+              padding: '6px 16px', 
+              background: 'rgba(99, 102, 241, 0.1)', 
+              borderRadius: 20,
+              border: '1px solid rgba(99, 102, 241, 0.2)'
+            }}>
+              <ThunderboltOutlined style={{ color: '#6366F1', fontSize: 14 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#6366F1' }}>AI 驱动</span>
+            </Space>
+          </div>
 
           {/* Main Content */}
-          <div className="flex flex-1 overflow-hidden">
+          <div style={{ 
+            flex: 1, 
+            padding: 16, 
+            overflow: 'hidden',
+            display: 'flex',
+            gap: 16
+          }}>
             {/* Left Panel - PDF */}
-            <div className="w-1/2 overflow-hidden flex flex-col glass border-r border-cyan-500/20">
-              <div className="p-6">
-                <PDFUploader />
+            <div
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 16,
+                border: '1px solid rgba(255, 255, 255, 0.6)',
+                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Upload */}
+              <div style={{ padding: 16, flexShrink: 0 }}>
+                <PDFUploaderPro />
               </div>
 
-              <div className="px-6 pb-4">
+              <Divider style={{ margin: 0 }} />
+
+              {/* PDF List */}
+              <div style={{ padding: '12px 16px', maxHeight: 280, overflowY: 'auto', flexShrink: 0 }}>
                 <PDFList />
               </div>
 
-              <div className="flex-1 overflow-auto px-6 pb-6 scrollbar-thin">
+              <Divider style={{ margin: 0 }} />
+
+              {/* PDF Viewer */}
+              <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
                 <PDFViewer />
               </div>
             </div>
 
             {/* Right Panel - Chat */}
-            <div className="w-1/2 overflow-hidden flex flex-col glass">
+            <div
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 16,
+                border: '1px solid rgba(255, 255, 255, 0.6)',
+                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.1)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
               <ChatInterface />
             </div>
           </div>

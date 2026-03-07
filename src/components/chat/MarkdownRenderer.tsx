@@ -1,75 +1,100 @@
 /**
- * Markdown Renderer Component - 深色主题优化
+ * Markdown Renderer - Ant Design Style
  */
 
 "use client";
 
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import { Typography } from "antd";
+
+const { Text, Title, Paragraph } = Typography;
 
 interface MarkdownRendererProps {
   content: string;
-  className?: string;
 }
 
-export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
-    <div className={`prose prose-sm max-w-none prose-invert ${className}`}>
+    <div className="markdown-content">
       <ReactMarkdown
         components={{
           code(props: any) {
-            const { node, inline, className, children, ...rest } = props;
+            const { inline, children, ...rest } = props;
             const inlineProp = props.inline ?? false;
             return inlineProp ? (
               <code
-                className="rounded-md bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-xs font-mono text-cyan-300 before:content-[''] after:content-['']"
+                style={{
+                  backgroundColor: '#F3F4F6',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: '#EF4444'
+                }}
                 {...rest}
               >
                 {children}
               </code>
             ) : (
-              <code
-                className="block rounded-lg bg-slate-900/50 border border-cyan-500/20 px-4 py-3 text-xs font-mono text-cyan-200 before:content-[''] after:content-[''] overflow-x-auto"
-                {...rest}
+              <pre
+                style={{
+                  backgroundColor: '#F9FAFB',
+                  padding: 12,
+                  borderRadius: 8,
+                  overflow: 'auto',
+                  border: '1px solid #E5E7EB',
+                  marginTop: 8,
+                  marginBottom: 8
+                }}
               >
-                {children}
-              </code>
+                <code
+                  style={{
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    color: '#374151'
+                  }}
+                  {...rest}
+                >
+                  {children}
+                </code>
+              </pre>
             );
           },
           ul({ children }) {
-            return <ul className="space-y-2 my-3">{children}</ul>;
+            return <ul style={{ paddingLeft: 20, marginTop: 8, marginBottom: 8 }}>{children}</ul>;
           },
           ol({ children }) {
-            return <ol className="space-y-2 my-3">{children}</ol>;
+            return <ol style={{ paddingLeft: 20, marginTop: 8, marginBottom: 8 }}>{children}</ol>;
           },
           li({ children }) {
-            return <li className="text-cyan-100/90 leading-relaxed">{children}</li>;
+            return <li style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 4 }}>{children}</li>;
           },
           p({ children }) {
-            return <p className="text-cyan-100/90 leading-relaxed my-2">{children}</p>;
+            return <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, marginBottom: 8 }}>{children}</p>;
           },
           h1({ children }) {
-            return <h1 className="text-base font-semibold text-cyan-400 my-3 border-b border-cyan-500/20 pb-2">{children}</h1>;
+            return <h3 style={{ fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 8, borderBottom: '1px solid #E5E7EB', paddingBottom: 8 }}>{children}</h3>;
           },
           h2({ children }) {
-            return <h2 className="text-sm font-semibold text-cyan-400 my-2.5">{children}</h2>;
+            return <h4 style={{ fontSize: 15, fontWeight: 600, marginTop: 12, marginBottom: 6 }}>{children}</h4>;
           },
           h3({ children }) {
-            return <h3 className="text-sm font-medium text-cyan-400/90 my-2">{children}</h3>;
+            return <h5 style={{ fontSize: 14, fontWeight: 600, marginTop: 10, marginBottom: 6 }}>{children}</h5>;
           },
           strong({ children }) {
-            return <strong className="font-semibold text-cyan-300">{children}</strong>;
+            return <strong style={{ fontWeight: 600 }}>{children}</strong>;
           },
           em({ children }) {
-            return <em className="italic text-cyan-100/80">{children}</em>;
+            return <em style={{ fontStyle: 'italic' }}>{children}</em>;
           },
           a({ children, href }) {
             return (
               <a
                 href={href}
-                className="text-cyan-400 underline underline-offset-2 hover:text-cyan-300 transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
+                style={{ color: '#6366F1', textDecoration: 'underline' }}
               >
                 {children}
               </a>
@@ -77,34 +102,66 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
           },
           blockquote({ children }) {
             return (
-              <blockquote className="border-l-2 border-cyan-500/30 bg-cyan-500/5 pl-4 py-2 italic text-cyan-100/70 my-3 rounded-r">
+              <blockquote
+                style={{
+                  borderLeft: '3px solid #6366F1',
+                  paddingLeft: 12,
+                  marginLeft: 0,
+                  marginTop: 8,
+                  marginBottom: 8,
+                  color: '#6B7280',
+                  fontStyle: 'italic'
+                }}
+              >
                 {children}
               </blockquote>
             );
           },
           table({ children }) {
             return (
-              <div className="overflow-x-auto my-3">
-                <table className="min-w-full border border-cyan-500/20 rounded-lg">
+              <div style={{ overflowX: 'auto', marginTop: 8, marginBottom: 8 }}>
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 12,
+                    border: '1px solid #E5E7EB'
+                  }}
+                >
                   {children}
                 </table>
               </div>
             );
           },
           thead({ children }) {
-            return <thead className="bg-cyan-500/10">{children}</thead>;
+            return <thead style={{ backgroundColor: '#F9FAFB' }}>{children}</thead>;
           },
           tbody({ children }) {
-            return <tbody className="divide-y divide-cyan-500/10">{children}</tbody>;
+            return <tbody>{children}</tbody>;
           },
           tr({ children }) {
-            return <tr className="hover:bg-cyan-500/5 transition-colors">{children}</tr>;
+            return <tr style={{ borderBottom: '1px solid #E5E7EB' }}>{children}</tr>;
           },
           th({ children }) {
-            return <th className="px-4 py-2 text-left text-xs font-semibold text-cyan-400 border-b border-cyan-500/20">{children}</th>;
+            return (
+              <th
+                style={{
+                  padding: '8px 12px',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  borderBottom: '2px solid #E5E7EB'
+                }}
+              >
+                {children}
+              </th>
+            );
           },
           td({ children }) {
-            return <td className="px-4 py-2 text-sm text-cyan-100/80">{children}</td>;
+            return (
+              <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6' }}>
+                {children}
+              </td>
+            );
           },
         }}
       >

@@ -13,7 +13,9 @@
       "Bash(taskkill:*)",
       "Bash(node:*)",
       "Bash(netstat -ano)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
     ]
   }
 }
