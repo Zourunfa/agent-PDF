@@ -36,49 +36,72 @@ export function PDFUploaderPro() {
 
   const autoSummarize = async (pdfId: string) => {
     const conversationId = `conv-${pdfId}`;
-    const question = "请帮我总结一下这份文档的主要内容";
+    const question = "请详细总结这个文件的主要内容、关键信息和重点";
     
+    // 设置活动对话
     setActiveConversation(conversationId);
+    
+    // 添加用户消息
     const userMessage = createUserMessage(conversationId, pdfId, question);
     addMessage(conversationId, userMessage);
+    
     setStreaming(true);
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfId, question, conversationId, history: [] }),
+        body: JSON.stringify({ 
+          pdfId, 
+          question, 
+          conversationId, 
+          history: [] 
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let assistantMessage = "";
+      let assistantContent = "";
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
+          const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split("\n");
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.type === "token") {
-                  assistantMessage += data.content || "";
+                if (data.type === "token" && data.content) {
+                  assistantContent += data.content;
                 } else if (data.type === "end") {
-                  const aiMessage = createAssistantMessage(conversationId, pdfId, assistantMessage, data.metadata);
+                  // 完成流式传输，添加最终消息
+                  const aiMessage = createAssistantMessage(
+                    conversationId, 
+                    pdfId, 
+                    assistantContent, 
+                    data.metadata
+                  );
                   addMessage(conversationId, aiMessage);
+                  message.success("文档总结完成！");
                 }
-              } catch (e) {}
+              } catch (e) {
+                console.error("Parse SSE error:", e);
+              }
             }
           }
         }
       }
     } catch (error) {
       console.error("Auto-summarize error:", error);
+      message.error("自动总结失败，请手动提问");
     } finally {
       setStreaming(false);
     }
