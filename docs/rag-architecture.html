@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 架构原理图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 50%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab {
+            padding: 12px 30px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 30px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .tab:hover, .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Section */
+        section {
+            margin: 40px 0;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 25px;
+            background: linear-gradient(to bottom, var(--accent), var(--primary));
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin: 25px 0 15px;
+            color: var(--text-primary);
+        }
+
+        /* RAG Architecture Diagram */
+        .rag-diagram {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+
+        .rag-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 40px 0;
+        }
+
+        .rag-step {
+            background: var(--bg-dark);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid var(--border);
+            text-align: center;
+            min-width: 200px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .rag-step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .rag-step.user {
+            border-color: var(--success);
+        }
+
+        .rag-step.retrieval {
+            border-color: var(--accent);
+        }
+
+        .rag-step.augment {
+            border-color: var(--warning);
+        }
+
+        .rag-step.generate {
+            border-color: var(--secondary);
+        }
+
+        .rag-step.response {
+            border-color: var(--primary);
+        }
+
+        .rag-step-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .rag-step-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .rag-step-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .rag-arrow {
+            color: var(--accent);
+            font-size: 2rem;
+            animation: flowArrow 2s infinite;
+        }
+
+        @keyframes flowArrow {
+            0%, 100% { transform: translateX(0); opacity: 1; }
+            50% { transform: translateX(10px); opacity: 0.5; }
+        }
+
+        /* Detailed Process */
+        .process-detail {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .process-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .process-step {
+            background: var(--bg-dark);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 4px solid var(--primary);
+            position: relative;
+        }
+
+        .process-step-number {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: var(--primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .process-step-title {
+            font-weight: 600;
+            margin: 10px 0 10px 0;
+            color: var(--text-primary);
+        }
+
+        .process-step-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .compare-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .compare-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .compare-card.without {
+            border-color: var(--danger);
+        }
+
+        .compare-card.with {
+            border-color: var(--success);
+        }
+
+        .compare-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .compare-icon {
+            font-size: 2.5rem;
+        }
+
+        .compare-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .compare-card.without .compare-title {
+            color: var(--danger);
+        }
+
+        .compare-card.with .compare-title {
+            color: var(--success);
+        }
+
+        .compare-list {
+            list-style: none;
+        }
+
+        .compare-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            color: var(--text-secondary);
+        }
+
+        .compare-list li:last-child {
+            border-bottom: none;
+        }
+
+        .compare-list li::before {
+            content: '•';
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* Vector Retrieval Diagram */
+        .vector-diagram {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+
+        .vector-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .vector-step {
+            background: var(--bg-dark);
+            padding: 20px 30px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .vector-step-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .vector-step-content {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .vector-arrow {
+            color: var(--accent);
+            font-size: 1.8rem;
+            animation: bounce 1.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(8px); }
+        }
+
+        /* Prompt Template */
+        .prompt-template {
+            background: #0d1117;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 1px solid var(--border);
+        }
+
+        .prompt-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .prompt-header-icon {
+            font-size: 1.5rem;
+        }
+
+        .prompt-header-title {
+            font-weight: 600;
+            color: var(--warning);
+        }
+
+        .prompt-content {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: #c9d1d9;
+        }
+
+        .prompt-variable {
+            color: var(--accent);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .prompt-context {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Components */
+        .component-box {
+            background: var(--bg-dark);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 1px solid var(--border);
+        }
+
+        .component-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .component-icon {
+            font-size: 2rem;
+        }
+
+        .component-title {
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        .component-content {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Benefits */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .benefit-card {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .benefit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .benefit-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .benefit-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Data Flow Animation */
+        .data-flow-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+
+        .flow-animation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        .flow-box {
+            background: var(--bg-dark);
+            padding: 20px 30px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            text-align: center;
+            min-width: 150px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flow-box::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .flow-box-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .flow-box-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Knowledge Base Diagram */
+        .knowledge-base {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+
+        .kb-structure {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .kb-layer {
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            text-align: center;
+        }
+
+        .kb-layer-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .kb-layer-items {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .kb-item {
+            background: var(--bg-card);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+        }
+
+        /* Interactive Demo */
+        .demo-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .demo-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .demo-button {
+            padding: 12px 30px;
+            background: var(--primary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .demo-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .demo-result {
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            min-height: 100px;
+            border: 1px solid var(--border);
+        }
+
+        /* Summary */
+        .summary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .summary h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-secondary);
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .rag-flow { flex-direction: column; }
+            .rag-arrow { transform: rotate(90deg); }
+            .comparison { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 RAG 架构原理图</h1>
+            <p class="subtitle">检索增强生成 (Retrieval-Augmented Generation) 完整解析</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="overview">概述</div>
+            <div class="tab" data-tab="architecture">架构流程</div>
+            <div class="tab" data-tab="comparison">传统 vs RAG</div>
+            <div class="tab" data-tab="vector">向量检索</div>
+            <div class="tab" data-tab="prompt">Prompt 构建</div>
+            <div class="tab" data-tab="components">核心组件</div>
+            <div class="tab" data-tab="benefits">优势特点</div>
+        </div>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="overview">
+            <section>
+                <h2>🎯 什么是 RAG？</h2>
+
+                <div class="component-box">
+                    <div class="component-header">
+                        <div class="component-icon">📖</div>
+                        <div class="component-title">定义</div>
+                    </div>
+                    <div class="component-content">
+                        <p><strong>RAG (Retrieval-Augmented Generation)</strong> 是一种结合了<strong>检索系统</strong>和<strong>生成模型</strong>的AI架构。它通过从外部知识库中检索相关信息，然后利用这些信息来增强大语言模型（LLM）的生成能力。</p>
+                    </div>
+                </div>
+
+                <div class="rag-diagram">
+                    <h3 style="text-align: center; margin-bottom: 30px;">RAG 核心流程</h3>
+                    <div class="rag-flow">
+                        <div class="rag-step user">
+                            <div class="rag-step-icon">❓</div>
+                            <div class="rag-step-title">用户问题</div>
+                            <div class="rag-step-desc">提出查询</div>
+                        </div>
+                        <div class="rag-arrow">→</div>
+                        <div class="rag-step retrieval">
+                            <div class="rag-step-icon">🔍</div>
+                            <div class="rag-step-title">检索</div>
+                            <div class="rag-step-desc">从知识库查找相关内容</div>
+                        </div>
+                        <div class="rag-arrow">→</div>
+                        <div class="rag-step augment">
+                            <div class="rag-step-icon">📝</div>
+                            <div class="rag-step-title">增强</div>
+                            <div class="rag-step-desc">结合检索内容构建 Prompt</div>
+                        </div>
+                        <div class="rag-arrow">→</div>
+                        <div class="rag-step generate">
+                            <div class="rag-step-icon">🤖</div>
+                            <div class="rag-step-title">生成</div>
+                            <div class="rag-step-desc">LLM 生成回答</div>
+                        </div>
+                        <div class="rag-arrow">→</div>
+                        <div class="rag-step response">
+                            <div class="rag-step-icon">✅</div>
+                            <div class="rag-step-title">响应</div>
+                            <div class="rag-step-desc">返回准确答案</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="benefits-grid">
+                    <div class="benefit-card">
+                        <div class="benefit-icon">📚</div>
+                        <div class="benefit-title">知识库增强</div>
+                        <div class="benefit-desc">AI 可以访问外部知识库，不限于训练数据</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🎯</div>
+                        <div class="benefit-title">准确性强</div>
+                        <div class="benefit-desc">基于真实文档内容，减少"幻觉"</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🔄</div>
+                        <div class="benefit-title">实时更新</div>
+                        <div class="benefit-desc">知识库可随时更新，无需重新训练模型</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">📎</div>
+                        <div class="benefit-title">可溯源</div>
+                        <div class="benefit-desc">可以引用原文来源，提高可信度</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div class="tab-content" id="architecture">
+            <section>
+                <h2>🏗️ RAG 架构详细流程</h2>
+
+                <div class="process-detail">
+                    <h3 style="text-align: center;">完整处理流程</h3>
+                    <div class="process-steps">
+                        <div class="process-step">
+                            <div class="process-step-number">1</div>
+                            <div class="process-step-title">📄 文档处理</div>
+                            <div class="process-step-desc">
+                                将文档切分成小块（chunk），每个chunk包含完整的语义单元
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">2</div>
+                            <div class="process-step-title">🔢 向量化</div>
+                            <div class="process-step-desc">
+                                使用 Embedding 模型将每个文本块转换为高维向量
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">3</div>
+                            <div class="process-step-title">💾 存储索引</div>
+                            <div class="process-step-desc">
+                                将向量和原文一起存入向量数据库，建立索引结构
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">4</div>
+                            <div class="process-step-title">❓ 问题向量化</div>
+                            <div class="process-step-desc">
+                                用户提问时，将问题也转换为向量
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">5</div>
+                            <div class="process-step-title">🔍 相似度检索</div>
+                            <div class="process-step-desc">
+                                计算问题向量与文档向量的相似度，找出最相关的chunk
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">6</div>
+                            <div class="process-step-title">📝 Prompt 构建</div>
+                            <div class="process-step-desc">
+                                将检索到的相关内容作为上下文，构建完整的 Prompt
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">7</div>
+                            <div class="process-step-title">🤖 LLM 生成</div>
+                            <div class="process-step-desc">
+                                将增强后的 Prompt 发送给 LLM，生成基于上下文的回答
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">8</div>
+                            <div class="process-step-title">✅ 返回结果</div>
+                            <div class="process-step-desc">
+                                将 LLM 的回答返回给用户，并可附加引用来源
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-flow-container">
+                    <h3 style="text-align: center;">数据流向示意图</h3>
+                    <div class="flow-animation">
+                        <div class="flow-box">
+                            <div class="flow-box-title">📚 知识库</div>
+                            <div class="flow-box-desc">PDF/文档/网页</div>
+                        </div>
+                        <div style="color: var(--accent);">→</div>
+                        <div class="flow-box">
+                            <div class="flow-box-title">🔢 向量数据库</div>
+                            <div class="flow-box-desc">Embedding 存储</div>
+                        </div>
+                        <div style="color: var(--accent);">→</div>
+                        <div class="flow-box">
+                            <div class="flow-box-title">🔍 检索引擎</div>
+                            <div class="flow-box-desc">相似度搜索</div>
+                        </div>
+                        <div style="color: var(--accent);">→</div>
+                        <div class="flow-box">
+                            <div class="flow-box-title">🤖 LLM</div>
+                            <div class="flow-box-desc">生成回答</div>
+                        </div>
+                        <div style="color: var(--accent);">→</div>
+                        <div class="flow-box">
+                            <div class="flow-box-title">✅ 用户</div>
+                            <div class="flow-box-desc">获得答案</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Comparison Tab -->
+        <div class="tab-content" id="comparison">
+            <section>
+                <h2>⚖️ 传统 LLM vs RAG</h2>
+
+                <div class="comparison">
+                    <div class="compare-card without">
+                        <div class="compare-header">
+                            <div class="compare-icon">❌</div>
+                            <div class="compare-title">传统 LLM（无 RAG）</div>
+                        </div>
+                        <ul class="compare-list">
+                            <li>只能回答训练数据中的知识</li>
+                            <li>无法访问私有文档或实时信息</li>
+                            <li>容易产生"幻觉"（编造答案）</li>
+                            <li>知识截止于模型训练时间</li>
+                            <li>无法引用信息来源</li>
+                            <li>更新知识需要重新训练模型</li>
+                            <li>可能在专业领域表现不佳</li>
+                        </ul>
+                    </div>
+
+                    <div class="compare-card with">
+                        <div class="compare-header">
+                            <div class="compare-icon">✅</div>
+                            <div class="compare-title">RAG 增强 LLM</div>
+                        </div>
+                        <ul class="compare-list">
+                            <li>可以访问外部知识库</li>
+                            <li>支持私有文档和实时信息</li>
+                            <li>基于真实内容，减少幻觉</li>
+                            <li>知识库可随时更新</li>
+                            <li>可以引用原文来源</li>
+                            <li>无需重新训练即可更新知识</li>
+                            <li>在专业领域表现优异</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="vector-diagram">
+                    <h3 style="text-align: center;">场景对比示例</h3>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 30px;">
+                        <div style="background: var(--bg-dark); padding: 25px; border-radius: 15px; border: 2px solid var(--danger);">
+                            <h4 style="color: var(--danger); margin-bottom: 15px;">❌ 传统 LLM</h4>
+                            <div style="margin-bottom: 20px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">用户：</div>
+                                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px;">"我们公司的 2024 年报中，Q4 的营收是多少？"</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">LLM：</div>
+                                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; color: var(--danger);">
+                                    "抱歉，我无法访问您公司的私有文档，也无法回答关于特定公司财报的问题。"
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--bg-dark); padding: 25px; border-radius: 15px; border: 2px solid var(--success);">
+                            <h4 style="color: var(--success); margin-bottom: 15px;">✅ RAG 增强 LLM</h4>
+                            <div style="margin-bottom: 20px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">用户：</div>
+                                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px;">"我们公司的 2024 年报中，Q4 的营收是多少？"</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">RAG LLM：</div>
+                                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; color: var(--success);">
+                                    "根据贵公司 2024 年报第 15 页的数据，Q4 营收为 12.5 亿元，同比增长 8.3%。"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Vector Retrieval Tab -->
+        <div class="tab-content" id="vector">
+            <section>
+                <h2>🔍 向量检索详解</h2>
+
+                <div class="vector-diagram">
+                    <h3 style="text-align: center;">向量检索原理</h3>
+                    <div class="vector-flow">
+                        <div class="vector-step">
+                            <div class="vector-step-title">1️⃣ 文本向量化</div>
+                            <div class="vector-step-content">
+                                将文本块通过 Embedding 模型转换为高维向量<br>
+                                例如："人工智能很棒" → [0.2, 0.8, 0.1, 0.9, ...] (1536维)
+                            </div>
+                        </div>
+
+                        <div class="vector-arrow">↓</div>
+
+                        <div class="vector-step">
+                            <div class="vector-step-title">2️⃣ 问题向量化</div>
+                            <div class="vector-step-content">
+                                用户提问同样转换为向量<br>
+                                例如："AI 好用吗？" → [0.3, 0.7, 0.2, 0.8, ...]
+                            </div>
+                        </div>
+
+                        <div class="vector-arrow">↓</div>
+
+                        <div class="vector-step">
+                            <div class="vector-step-title">3️⃣ 相似度计算</div>
+                            <div class="vector-step-content">
+                                计算问题向量与所有文档向量的相似度<br>
+                                常用方法：余弦相似度 (Cosine Similarity)
+                            </div>
+                        </div>
+
+                        <div class="vector-arrow">↓</div>
+
+                        <div class="vector-step">
+                            <div class="vector-step-title">4️⃣ Top-K 检索</div>
+                            <div class="vector-step-content">
+                                返回相似度最高的 K 个文本块<br>
+                                例如：返回最相关的前 3 个文档片段
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-box">
+                    <div class="component-header">
+                        <div class="component-icon">📐</div>
+                        <div class="component-title">余弦相似度公式</div>
+                    </div>
+                    <div class="component-content">
+                        <div style="background: #0d1117; padding: 20px; border-radius: 10px; text-align: center; font-family: 'Courier New', monospace;">
+                            <div style="font-size: 1.2rem; margin-bottom: 15px;">
+                                similarity = cos(θ) = (A · B) / (||A|| × ||B||)
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                其中 A 和 B 是两个向量，||A|| 和 ||B|| 是它们的模长
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <p><strong>取值范围：</strong> -1 到 1</p>
+                            <p><strong>含义：</strong> 值越接近 1，表示两个向量越相似（语义越相近）</p>
+                            <p><strong>优势：</strong> 不受向量长度影响，只关注方向</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="knowledge-base">
+                    <h3 style="text-align: center; margin-bottom: 30px;">知识库结构示例</h3>
+                    <div class="kb-structure">
+                        <div class="kb-layer">
+                            <div class="kb-layer-title">📚 原始文档</div>
+                            <div class="kb-layer-items">
+                                <div class="kb-item">📄 PDF 文档</div>
+                                <div class="kb-item">🌐 网页内容</div>
+                                <div class="kb-item">📝 Word 文档</div>
+                                <div class="kb-item">💬 对话记录</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; color: var(--accent);">↓ 切分 (Chunking)</div>
+
+                        <div class="kb-layer">
+                            <div class="kb-layer-title">📦 文本块 (Chunks)</div>
+                            <div class="kb-layer-items">
+                                <div class="kb-item">Chunk 1: 文档引言</div>
+                                <div class="kb-item">Chunk 2: 核心概念</div>
+                                <div class="kb-item">Chunk 3: 技术细节</div>
+                                <div class="kb-item">...更多块</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; color: var(--accent);">↓ 向量化 (Embedding)</div>
+
+                        <div class="kb-layer">
+                            <div class="kb-layer-title">🔢 向量表示</div>
+                            <div class="kb-layer-items">
+                                <div class="kb-item" style="font-family: monospace; font-size: 0.8rem;">[0.2, 0.8, 0.1, ...]</div>
+                                <div class="kb-item" style="font-family: monospace; font-size: 0.8rem;">[0.3, 0.7, 0.2, ...]</div>
+                                <div class="kb-item" style="font-family: monospace; font-size: 0.8rem;">[0.1, 0.9, 0.3, ...]</div>
+                                <div class="kb-item">...更多向量</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; color: var(--accent);">↓ 存储到向量数据库</div>
+
+                        <div class="kb-layer" style="border-color: var(--primary);">
+                            <div class="kb-layer-title" style="color: var(--primary);">🗄️ 向量数据库</div>
+                            <div class="kb-layer-items">
+                                <div class="kb-item">向量索引</div>
+                                <div class="kb-item">元数据</div>
+                                <div class="kb-item">原文引用</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Prompt Tab -->
+        <div class="tab-content" id="prompt">
+            <section>
+                <h2>📝 Prompt 构建详解</h2>
+
+                <div class="prompt-template">
+                    <div class="prompt-header">
+                        <div class="prompt-header-icon">📋</div>
+                        <div class="prompt-header-title">RAG Prompt 模板</div>
+                    </div>
+                    <div class="prompt-content">
+你是一个专业的AI助手。请根据以下参考信息回答用户的问题。
+
+<span class="prompt-context">【参考信息】
+{retrieved_context}
+
+---
+</span>
+
+<span class="prompt-variable">【用户问题】
+{user_query}
+
+---
+</span>
+
+【要求】
+1. 主要基于参考信息回答问题
+2. 如果参考信息中没有相关内容，请明确说明
+3. 回答要准确、简洁、有条理
+4. 可以适当引用参考信息中的具体内容
+
+【回答】：
+                    </div>
+                </div>
+
+                <div class="process-detail">
+                    <h3 style="text-align: center;">Prompt 构建步骤</h3>
+                    <div class="process-steps">
+                        <div class="process-step">
+                            <div class="process-step-number">1</div>
+                            <div class="process-step-title">系统提示词</div>
+                            <div class="process-step-desc">
+                                定义 AI 的角色和行为准则，设定回答风格
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">2</div>
+                            <div class="process-step-title">检索上下文</div>
+                            <div class="process-step-desc">
+                                插入从向量数据库检索到的相关文档片段
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">3</div>
+                            <div class="process-step-title">用户问题</div>
+                            <div class="process-step-desc">
+                                插入用户的原始问题
+                            </div>
+                        </div>
+
+                        <div class="process-step">
+                            <div class="process-step-number">4</div>
+                            <div class="process-step-title">约束条件</div>
+                            <div class="process-step-desc">
+                                添加回答要求，如"基于参考信息"、"引用来源"等
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-box">
+                    <div class="component-header">
+                        <div class="component-icon">💡</div>
+                        <div class="component-title">Prompt 优化技巧</div>
+                    </div>
+                    <div class="component-content">
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <strong>1. 控制上下文长度：</strong>根据模型的上下文窗口限制，合理选择检索的文档数量
+                            </li>
+                            <li style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <strong>2. 添加元数据：</strong>在检索结果中包含文档来源、日期等信息，便于追溯
+                            </li>
+                            <li style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <strong>3. 明确拒绝回答：</strong>指示 AI 当上下文不足时明确说明，而非编造
+                            </li>
+                            <li style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <strong>4. 引用格式：</strong>要求 AI 在回答中标注信息来源
+                            </li>
+                            <li style="padding: 10px 0;">
+                                <strong>5. 思维链：</strong>对于复杂问题，可要求 AI 先分析再回答
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Components Tab -->
+        <div class="tab-content" id="components">
+            <section>
+                <h2>⚙️ RAG 核心组件</h2>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px;">
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">📄</div>
+                            <div class="component-title">文档加载器 (Document Loader)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>从各种来源加载文档</p>
+                            <p><strong>支持格式：</strong>PDF、Word、TXT、Markdown、HTML 等</p>
+                            <p><strong>常用工具：</strong>LangChain Document Loaders</p>
+                            <p><strong>示例：</strong>PDFLoader, TextLoader, WebLoader</p>
+                        </div>
+                    </div>
+
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">✂️</div>
+                            <div class="component-title">文本分割器 (Text Splitter)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>将长文档切分成适合处理的文本块</p>
+                            <p><strong>切分策略：</strong>按字符、句子、段落、语义</p>
+                            <p><strong>关键参数：</strong>chunk_size, chunk_overlap</p>
+                            <p><strong>常用工具：</strong>RecursiveCharacterTextSplitter</p>
+                        </div>
+                    </div>
+
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">🔢</div>
+                            <div class="component-title">嵌入模型 (Embeddings)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>将文本转换为向量表示</p>
+                            <p><strong>常用模型：</strong>OpenAI, Cohere, HuggingFace</p>
+                            <p><strong>向量维度：</strong>384/768/1536 维</p>
+                            <p><strong>成本考虑：</strong>可缓存结果避免重复计算</p>
+                        </div>
+                    </div>
+
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">🗄️</div>
+                            <div class="component-title">向量数据库 (Vector Store)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>高效存储和检索向量数据</p>
+                            <p><strong>常用选择：</strong>Pinecone, Weaviate, Chroma, Qdrant</p>
+                            <p><strong>开源方案：</strong>FAISS, Milvus, ChromaDB</p>
+                            <p><strong>关键能力：</strong>相似度搜索、元数据过滤</p>
+                        </div>
+                    </div>
+
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">🔍</div>
+                            <div class="component-title">检索器 (Retriever)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>根据查询检索相关文档</p>
+                            <p><strong>检索策略：</strong>相似度、MMR、混合检索</p>
+                            <p><strong>参数调整：</strong>k (返回数量), score_threshold</p>
+                            <p><strong>高级功能：</strong>重排序 (Reranking)</p>
+                        </div>
+                    </div>
+
+                    <div class="component-box">
+                        <div class="component-header">
+                            <div class="component-icon">🤖</div>
+                            <div class="component-title">大语言模型 (LLM)</div>
+                        </div>
+                        <div class="component-content">
+                            <p><strong>功能：</strong>基于上下文生成回答</p>
+                            <p><strong>常用模型：</strong>GPT-4, Claude, 通义千问</p>
+                            <p><strong>选择因素：</strong>性能、成本、语言支持</p>
+                            <p><strong>部署方式：</strong>API 调用或本地部署</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Benefits Tab -->
+        <div class="tab-content" id="benefits">
+            <section>
+                <h2>✨ RAG 的优势与挑战</h2>
+
+                <div class="benefits-grid">
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🎯</div>
+                        <div class="benefit-title">准确性提升</div>
+                        <div class="benefit-desc">基于真实文档内容，大幅减少幻觉问题</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">📚</div>
+                        <div class="benefit-title">知识扩展</div>
+                        <div class="benefit-desc">可访问私有数据和实时信息</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">💰</div>
+                        <div class="benefit-title">成本效益</div>
+                        <div class="benefit-desc">无需微调模型，降低开发成本</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🔍</div>
+                        <div class="benefit-title">可解释性</div>
+                        <div class="benefit-desc">可追溯信息来源，提高可信度</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🔄</div>
+                        <div class="benefit-title">灵活更新</div>
+                        <div class="benefit-desc">知识库可随时更新，无需重新训练</div>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">🌐</div>
+                        <div class="benefit-title">领域适配</div>
+                        <div class="benefit-desc">轻松适配特定行业和领域</div>
+                    </div>
+                </div>
+
+                <div class="comparison">
+                    <div class="compare-card" style="border-color: var(--success);">
+                        <div class="compare-header">
+                            <div class="compare-icon">✅</div>
+                            <div class="compare-title" style="color: var(--success);">优势</div>
+                        </div>
+                        <ul class="compare-list">
+                            <li>无需训练模型，快速部署</li>
+                            <li>支持实时数据更新</li>
+                            <li>可访问私有知识库</li>
+                            <li>回答可溯源验证</li>
+                            <li>开发成本较低</li>
+                            <li>适合企业级应用</li>
+                        </ul>
+                    </div>
+
+                    <div class="compare-card" style="border-color: var(--warning);">
+                        <div class="compare-header">
+                            <div class="compare-icon">⚠️</div>
+                            <div class="compare-title" style="color: var(--warning);">挑战</div>
+                        </div>
+                        <ul class="compare-list">
+                            <li>检索质量依赖文档分块策略</li>
+                            <li>向量数据库需要维护</li>
+                            <li>增加系统延迟</li>
+                            <li>上下文长度限制</li>
+                            <li>需要多个组件协同工作</li>
+                            <li>知识库质量直接影响效果</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="summary">
+                    <h3>🎯 适用场景</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div>
+                            <h4 style="color: var(--success); margin-bottom: 10px;">✅ 非常适合</h4>
+                            <ul style="font-size: 0.9rem; color: var(--text-secondary);">
+                                <li>企业知识库问答</li>
+                                <li>文档智能检索</li>
+                                <li>客户支持系统</li>
+                                <li>法律/医疗咨询</li>
+                                <li>技术文档助手</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--warning); margin-bottom: 10px;">⚠️ 需要评估</h4>
+                            <ul style="font-size: 0.9rem; color: var(--text-secondary);">
+                                <li>实时性要求极高的场景</li>
+                                <li>通用闲聊应用</li>
+                                <li>创意写作辅助</li>
+                                <li>代码生成（可能需要 fine-tuning）</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p>RAG 架构原理图 | Agent-PDF 项目文档</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">配合 langchain-vector-tutorial.html 使用效果更佳</p>
+        </footer>
+    </div>
+
+    <script>
+        // Tab switching
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+
+                // Update tab active state
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update content visibility
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === targetTab) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

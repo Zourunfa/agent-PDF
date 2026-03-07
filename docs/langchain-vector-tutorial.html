@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangChain 与向量数据库实战教程</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding: 30px 0;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Section */
+        section {
+            margin: 60px 0;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        section:nth-child(1) { animation-delay: 0.1s; }
+        section:nth-child(2) { animation-delay: 0.2s; }
+        section:nth-child(3) { animation-delay: 0.3s; }
+        section:nth-child(4) { animation-delay: 0.4s; }
+        section:nth-child(5) { animation-delay: 0.5s; }
+        section:nth-child(6) { animation-delay: 0.6s; }
+        section:nth-child(7) { animation-delay: 0.7s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 30px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            border-radius: 2px;
+        }
+
+        /* Concept Cards */
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+
+        .concept-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .concept-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .concept-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+        }
+
+        .concept-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .concept-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .concept-desc {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .concept-example {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid var(--primary);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Vector Visualization */
+        .vector-demo {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+        }
+
+        .vector-space {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            padding: 40px 0;
+        }
+
+        .vector-point {
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .vector-point::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--primary);
+            transform: translate(-50%, -50%);
+            opacity: 0.3;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+            50% { transform: translate(-50%, -50%) scale(2); opacity: 0.1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+        }
+
+        .vector-point:hover {
+            transform: scale(1.5);
+        }
+
+        .vector-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform-origin: left center;
+            animation: expandLine 2s ease-in-out infinite;
+        }
+
+        @keyframes expandLine {
+            0% { width: 0; opacity: 0; }
+            50% { width: 100px; opacity: 1; }
+            100% { width: 0; opacity: 0; }
+        }
+
+        /* Code Example */
+        .code-example {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .code-example::before {
+            content: 'typescript';
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .code-example pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: #c9d1d9;
+        }
+
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .function { color: #d2a8ff; }
+        .comment { color: #8b949e; }
+        .number { color: #79c0ff; }
+        .class-name { color: #ffa657; }
+
+        /* Interactive Demo */
+        .interactive-demo {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .demo-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .demo-input input {
+            flex: 1;
+            padding: 15px 20px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .demo-input input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .demo-input button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .demo-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .demo-result {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 100px;
+        }
+
+        .embedding-visual {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .embedding-bar {
+            height: 20px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        /* Comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .comparison-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .comparison-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .comparison-list {
+            list-style: none;
+        }
+
+        .comparison-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .comparison-list li:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-list .icon {
+            font-size: 1.2rem;
+        }
+
+        /* Animation */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .flow-box:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .flow-box.active {
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .flow-arrow {
+            font-size: 2rem;
+            color: var(--primary);
+            animation: moveArrow 1s ease-in-out infinite;
+        }
+
+        @keyframes moveArrow {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+        }
+
+        .tab.active::after {
+            transform: scaleX(1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Architecture */
+        .arch-diagram {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+        }
+
+        .layer {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: 12px;
+        }
+
+        .layer-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .layer-component {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px 20px;
+            text-align: center;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .stat-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+
+        .info-box.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--warning);
+        }
+
+        .info-box.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: var(--success);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .concept-grid { grid-template-columns: 1fr; }
+            .comparison { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🦜 LangChain & 向量数据库</h1>
+            <p class="subtitle">从零开始学习 AI 应用的向量检索技术 - PDF 聊天应用实战</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <a href="#intro" class="nav-item">📚 基础概念</a>
+            <a href="#langchain" class="nav-item">🔗 LangChain</a>
+            <a href="#vectors" class="nav-item">📐 向量嵌入</a>
+            <a href="#vectorstore" class="nav-item">🗄️ 向量存储</a>
+            <a href="#retrieval" class="nav-item">🔍 相似度搜索</a>
+            <a href="#practice" class="nav-item">💻 实战代码</a>
+        </nav>
+
+        <!-- Introduction -->
+        <section id="intro">
+            <h2>📚 基础概念</h2>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">1536</div>
+                    <div class="stat-label">向量维度</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">cos</div>
+                    <div class="stat-label">相似度算法</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">可扩展存储</div>
+                </div>
+            </div>
+
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <div class="concept-icon">📐</div>
+                    <div class="concept-title">向量嵌入 (Embeddings)</div>
+                    <div class="concept-desc">
+                        将文本转换为数字向量，使计算机能够理解和比较文本的语义相似性。
+                    </div>
+                    <div class="concept-example">
+                        "苹果" → [0.123, -0.456, 0.789, ...]<br/>
+                        1536 维向量，语义相近的词语向量距离更近
+                    </div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-icon">🗄️</div>
+                    <div class="concept-title">向量数据库</div>
+                    <div class="concept-desc">
+                        专门存储和检索高维向量的数据库，支持快速相似度搜索。
+                    </div>
+                    <div class="concept-example">
+                        传统数据库：精确匹配<br/>
+                        向量数据库：语义相似度搜索
+                    </div>
+                </div>
+
+                <div class="concept-card">
+                    <div class="concept-icon">🔍</div>
+                    <div class="concept-title">相似度搜索</div>
+                    <div class="concept-desc">
+                        计算查询向量与存储向量的相似度，返回最相似的结果。
+                    </div>
+                    <div class="concept-example">
+                        问题："什么是AI？"<br/>
+                        匹配："人工智能的定义..."<br/>
+                        相似度：0.89
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LangChain -->
+        <section id="langchain">
+            <h2>🔗 LangChain 框架</h2>
+
+            <div class="info-box">
+                <strong>LangChain</strong> 是一个用于开发由大型语言模型 (LLM) 驱动的应用程序的框架。
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'core')">核心概念</button>
+                <button class="tab" onclick="switchTab(event, 'chains')">链式调用</button>
+                <button class="tab" onclick="switchTab(event, 'memory')">记忆管理</button>
+            </div>
+
+            <div id="core" class="tab-content active">
+                <div class="concept-grid">
+                    <div class="concept-card">
+                        <div class="concept-icon">📄</div>
+                        <div class="concept-title">Documents (文档)</div>
+                        <div class="concept-desc">文本内容的封装，包含 pageContent 和 metadata</div>
+                    </div>
+                    <div class="concept-card">
+                        <div class="concept-icon">✂️</div>
+                        <div class="concept-title">Text Splitters (分块器)</div>
+                        <div class="concept-desc">将长文本分割成适合处理的小块</div>
+                    </div>
+                    <div class="concept-card">
+                        <div class="concept-icon">🤖</div>
+                        <div class="concept-title">Embeddings (嵌入)</div>
+                        <div class="concept-desc">将文本转换为向量表示</div>
+                    </div>
+                    <div class="concept-card">
+                        <div class="concept-icon">🗄️</div>
+                        <div class="concept-title">Vector Stores (向量存储)</div>
+                        <div class="concept-desc">存储和搜索向量的专用数据库</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chains" class="tab-content">
+                <div class="arch-diagram">
+                    <div class="layer-title">LLMChain 调用链示例</div>
+                    <div class="layer">
+                        <div class="layer-component">用户问题</div>
+                        <div style="display:flex;align-items:center">→</div>
+                        <div class="layer-component">加载文档</div>
+                        <div style="display:flex;align-items:center">→</div>
+                        <div class="layer-component">向量搜索</div>
+                        <div style="display:flex;align-items:center">→</div>
+                        <div class="layer-component">构建提示词</div>
+                        <div style="display:flex;align-items:center">→</div>
+                        <div class="layer-component">LLM 回答</div>
+                    </div>
+                </div>
+
+                <div class="code-example">
+                    <pre>
+<span class="comment">// 使用 RetrievalQAChain 实现问答</span>
+<span class="keyword">import</span> { RetrievalQAChain } <span class="keyword">from</span> <span class="string">"langchain/chains"</span>;
+<span class="keyword">import</span> { MemoryVectorStore } <span class="keyword">from</span> <span class="string">"langchain/vectorstores/memory"</span>;
+
+<span class="comment">// 创建向量存储</span>
+<span class="keyword">const</span> vectorStore = <span class="keyword">await</span> MemoryVectorStore.<span class="function">fromDocuments</span>(
+  documents,
+  embeddings
+);
+
+<span class="comment">// 创建问答链</span>
+<span class="keyword">const</span> chain = <span class="keyword">await</span> RetrievalQAChain.<span class="function">fromLLM</span>(
+  llm,
+  vectorStore.<span class="function">asRetriever</span>()
+);
+
+<span class="comment">// 提问</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> chain.<span class="function">invoke</span>({
+  query: <span class="string">"什么是人工智能？"</span>,
+});
+
+<span class="comment">// 返回基于文档的回答</span>
+console.<span class="function">log</span>(response.answer);</pre>
+                </div>
+            </div>
+
+            <div id="memory" class="tab-content">
+                <div class="concept-grid">
+                    <div class="concept-card">
+                        <div class="concept-icon">💾</div>
+                        <div class="concept-title">BufferMemory</div>
+                        <div class="concept-desc">保存对话历史，支持多轮对话上下文</div>
+                    </div>
+                    <div class="concept-card">
+                        <div class="concept-icon">📝</div>
+                        <div class="concept-title">ConversationSummaryMemory</div>
+                        <div class="concept-desc">自动总结长对话，节省 Token</div>
+                    </div>
+                    <div class="concept-card">
+                        <div class="concept-icon">🔗</div>
+                        <div class="concept-title">KVStore</div>
+                        <div class="concept-desc">键值存储，用于持久化数据</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Vectors -->
+        <section id="vectors">
+            <h2>📐 向量嵌入原理</h2>
+
+            <div class="interactive-demo">
+                <div class="demo-input">
+                    <input type="text" id="textInput" placeholder="输入文本查看向量..." value="人工智能">
+                    <button onclick="generateEmbedding()">生成向量</button>
+                </div>
+                <div class="demo-result">
+                    <div style="text-align:center; color:var(--text-secondary); margin-bottom:10px;">
+                        向量可视化 (前 32 维)
+                    </div>
+                    <div class="embedding-visual" id="embeddingVisual">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box warning">
+                <strong>注意</strong>：实际向量是 1536 维，这里只可视化前 32 维以便展示。
+            </div>
+
+            <h3 style="margin-top: 40px;">向量的语义特性</h3>
+
+            <div class="comparison">
+                <div class="comparison-item">
+                    <div class="comparison-title">语义相近</div>
+                    <ul class="comparison-list">
+                        <li><span class="icon">🔴</span>"猫" ↔ "狗" = 0.23 (较近)</li>
+                        <li><span class="icon">🔴</span>"国王" ↔ "女王" = 0.18 (很近)</li>
+                        <li><span class="icon">🔴</span>"北京" ↔ "首都" = 0.31 (相关)</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-title">语义相远</div>
+                    <ul class="comparison-list">
+                        <li><span class="icon">🔵</span>"猫" ↔ "汽车" = 0.78 (较远)</li>
+                        <li><span class="icon">🔵</span>"国王" ↔ "香蕉" = 0.82 (很远)</li>
+                        <li><span class="icon">🔵</span>"编程" ↔ "游泳" = 0.75 (较远)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Vector Store -->
+        <section id="vectorstore">
+            <h2>🗄️ 向量存储</h2>
+
+            <div class="arch-diagram">
+                <div class="layer-title">本项目向量存储架构</div>
+                <div class="layer">
+                    <div class="layer-component">PDF 文档</div>
+                    <div style="display:flex;align-items:center">→</div>
+                    <div class="layer-component">文本分块</div>
+                    <div style="display:flex;align-items:center">→</div>
+                    <div class="layer-component active">向量嵌入</div>
+                    <div style="display:flex;align-items:center">→</div>
+                    <div class="layer-component active">MemoryVectorStore</div>
+                    <div style="display:flex;align-items:center">→</div>
+                    <div class="layer-component">Redis 存储</div>
+                </div>
+            </div>
+
+            <div class="code-example">
+                <pre>
+<span class="comment">// 本项目：创建向量存储</span>
+<span class="keyword">import</span> { MemoryVectorStore } <span class="keyword">from</span> <span class="string">"langchain/vectorstores/memory"</span>;
+<span class="keyword">import</span> { AlibabaTongyiEmbeddings } <span class="keyword">from</span> <span class="string">"@langchain/community/embeddings/alibaba_tongyi"</span>;
+
+<span class="comment">// 1. 初始化嵌入模型</span>
+<span class="keyword">const</span> embeddings = <span class="keyword">new</span> <span class="function">AlibabaTongyiEmbeddings</span>({
+  apiKey: process.env.QWEN_API_KEY,
+  modelName: <span class="string">"text-embedding-v2"</span>
+});
+
+<span class="comment">// 2. 创建文档</span>
+<span class="keyword">const</span> documents = chunks.<span class="function">map</span>(chunk =>
+  <span class="keyword">new</span> <span class="class-name">Document</span>({
+    pageContent: chunk.content,
+    metadata: { pdfId, source: <span class="string">"pdf"</span> }
+  })
+);
+
+<span class="comment">// 3. 创建向量存储</span>
+<span class="keyword">const</span> vectorStore = <span class="keyword">await</span> MemoryVectorStore.<span class="function">fromDocuments</span>(
+  documents,
+  embeddings
+);
+
+<span class="comment">// 4. 相似度搜索</span>
+<span class="keyword">const</span> results = <span class="keyword">await</span> vectorStore.<span class="function">similaritySearchWithScore</span>(
+  <span class="string">"什么是AI？"</span>,
+  <span class="number">4</span>  <span class="comment">// 返回前4个最相关的结果</span>
+);</pre>
+            </div>
+        </section>
+
+        <!-- Retrieval -->
+        <section id="retrieval">
+            <h2>🔍 相似度搜索</h2>
+
+            <div class="flow-diagram">
+                <div class="flow-box">
+                    <div style="font-size:2rem">❓</div>
+                    <div>用户提问</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <div style="font-size:2rem">🔢</div>
+                    <div>问题向量化</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <div style="font-size:2rem">🗄️</div>
+                    <div>向量搜索</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box active">
+                    <div style="font-size:2rem">📋</div>
+                    <div>Top-K 结果</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 40px;">相似度计算方法</h3>
+
+            <table style="width:100%; border-collapse: collapse; margin: 20px 0;">
+                <thead>
+                    <tr style="background: rgba(99, 102, 241, 0.1);">
+                        <th style="padding: 15px; text-align: left; color: var(--primary);">方法</th>
+                        <th style="padding: 15px; text-align: left; color: var(--primary);">范围</th>
+                        <th style="padding: 15px; text-align: left; color: var(--primary);">特点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 15px;">余弦相似度 (Cosine)</td>
+                        <td style="padding: 15px;">[-1, 1]</td>
+                        <td style="padding: 15px;">本项目使用，关注角度不关注大小</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 15px;">欧氏距离 (Euclidean)</td>
+                        <td style="padding: 15px;">[0, ∞]</td>
+                        <td style="padding: 15px;">考虑向量大小和方向</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px;">点积 (Dot Product)</td>
+                        <td style="padding: 15px;">(-∞, ∞)</td>
+                        <td style="padding: 15px;">计算简单，需要归一化</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box success">
+                <strong>本项目使用</strong>：余弦相似度，因为它能更好地捕获语义相似性，不受向量长度影响。
+            </div>
+        </section>
+
+        <!-- Practice -->
+        <section id="practice">
+            <h2>💻 实战代码</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'embedding')">文本嵌入</button>
+                <button class="tab" onclick="switchTab(event, 'store')">向量存储</button>
+                <button class="tab" onclick="switchTab(event, 'search')">相似度搜索</button>
+            </div>
+
+            <div id="embedding" class="tab-content active">
+                <div class="code-example">
+                    <pre>
+<span class="comment">// 文本嵌入实现</span>
+<span class="keyword">import</span> { AlibabaTongyiEmbeddings } <span class="keyword">from</span> <span class="string">"@langchain/community/embeddings/alibaba_tongyi"</span>;
+
+<span class="comment">// 初始化嵌入模型</span>
+<span class="keyword">const</span> embeddings = <span class="keyword">new</span> <span class="function">AlibabaTongyiEmbeddings</span>({
+  apiKey: process.env.QWEN_API_KEY,
+  modelName: <span class="string">"text-embedding-v2"</span>
+});
+
+<span class="comment">// 嵌入单个文本</span>
+<span class="keyword">const</span> vector = <span class="keyword">await</span> embeddings.<span class="function">embedQuery</span>(<span class="string">"什么是人工智能？"</span>);
+console.<span class="function">log</span>(vector.length);  <span class="comment">// 1536</span>
+
+<span class="comment">// 嵌入多个文本（批量）</span>
+<span class="keyword">const</span> texts = [<span class="string">"AI 是机器智能"</span>, <span class="string">"AI 可以为人类服务"</span>];
+<span class="keyword">const</span> vectors = <span class="keyword">await</span> embeddings.<span class="function">embedDocuments</span>(texts);
+console.<span class="function">log</span>(vectors.length);  <span class="comment">// 2</span></pre>
+                </div>
+            </div>
+
+            <div id="store" class="tab-content">
+                <div class="code-example">
+                    <pre>
+<span class="comment">// 向量存储实现</span>
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="function">createVectorStoreFromChunks</span>(
+  pdfId: <span class="keyword">string</span>,
+  chunks: <span class="class-name">Chunk</span>[]
+) {
+  <span class="comment">// 1. 存储 chunks 到 Redis</span>
+  <span class="keyword">await</span> redis.<span class="function">set</span>(<span class="string">`vector:${pdfId}`</span>, chunks);
+
+  <span class="comment">// 2. 创建文档</span>
+  <span class="keyword">const</span> documents = chunks.<span class="function">map</span>(chunk =>
+    <span class="keyword">new</span> <span class="class-name">Document</span>({
+      pageContent: chunk.content,
+      metadata: chunk.metadata
+    })
+  );
+
+  <span class="comment">// 3. 创建向量存储</span>
+  <span class="keyword">const</span> vectorStore = <span class="keyword">await</span> MemoryVectorStore
+    .<span class="function">fromDocuments</span>(documents, embeddings);
+
+  <span class="comment">// 4. 计算并存储 embeddings</span>
+  <span class="keyword">const</span> embeddingVectors = <span class="keyword">await</span> embeddings
+    .<span class="function">embedDocuments</span>(chunks.<span class="function">map</span>(c => c.content));
+  <span class="keyword">await</span> redis.<span class="function">set</span>(
+    <span class="string">`vector:${pdfId}:embeddings`</span>,
+    embeddingVectors
+  );
+
+  <span class="keyword">return</span> vectorStore;
+}</pre>
+                </div>
+            </div>
+
+            <div id="search" class="tab-content">
+                <div class="code-example">
+                    <pre>
+<span class="comment">// 相似度搜索实现</span>
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="function">searchSimilarDocuments</span>(
+  pdfId: <span class="keyword">string</span>,
+  query: <span class="keyword">string</span>,
+  k: <span class="keyword">number</span> = <span class="number">4</span>
+) {
+  <span class="comment">// 1. 从 Redis 恢复数据</span>
+  <span class="keyword">const</span> chunks = <span class="keyword">await</span> redis.<span class="function">get</span>(<span class="string">`vector:${pdfId}`</span>);
+  <span class="keyword">const</span> embeddings = <span class="keyword">await</span> redis
+    .<span class="function">get</span>(<span class="string">`vector:${pdfId}:embeddings`</span>);
+
+  <span class="comment">// 2. 如果有缓存 embeddings，直接使用</span>
+  <span class="keyword">let</span> vectorStore;
+  <span class="keyword">if</span> (embeddings && embeddings.length === chunks.length) {
+    <span class="comment">// 避免重新计算！</span>
+    vectorStore = <span class="keyword">new</span> <span class="class-name">MemoryVectorStore</span>(embeddings);
+    <span class="keyword">await</span> vectorStore.<span class="function">addVectors</span>(
+      embeddings,
+      chunks.<span class="function">map</span>(c => <span class="keyword">new</span> <span class="class-name">Document</span>({
+        pageContent: c.content,
+        metadata: c.metadata
+      }))
+    );
+  } <span class="keyword">else</span> {
+    <span class="comment">// 重新计算</span>
+    vectorStore = <span class="keyword">await</span> <span class="function">createVectorStoreFromChunks</span>(
+      pdfId, chunks
+    );
+  }
+
+  <span class="comment">// 3. 相似度搜索</span>
+  <span class="keyword">const</span> results = <span class="keyword">await</span> vectorStore
+    .<span class="function">similaritySearchWithScore</span>(query, k);
+
+  <span class="comment">// 4. 过滤低相似度结果</span>
+  <span class="keyword">const</span> threshold = <span class="number">0.3</span>;
+  <span class="keyword">const</span> filtered = results.<span class="function">filter</span>(([, score]) =>
+    score > threshold
+  );
+
+  <span class="keyword">return</span> filtered.<span class="function">map</span>(([doc]) => doc);
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Takeaways -->
+        <section>
+            <h2>🎯 关键要点</h2>
+
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <div class="concept-icon">✅</div>
+                    <div class="concept-title">向量嵌入使文本可计算</div>
+                    <div class="concept-desc">将语义转换为数字距离</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon">✅</div>
+                    <div class="concept-title">LangChain 简化开发</div>
+                    <div class="concept-desc">提供统一的抽象接口</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon">✅</div>
+                    <div class="concept-title">缓存 embeddings 节省成本</div>
+                    <div class="concept-desc">避免重复调用 AI API</div>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon">✅</div>
+                    <div class="concept-title">Redis 解决无服务器问题</div>
+                    <div class="concept-desc">跨实例共享向量数据</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>🦜 LangChain & 向量数据库学习教程</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                PDF AI 聊天应用实战 | 2025
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        function switchTab(event, tabId) {
+            const tabs = event.target.parentElement.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // 生成向量可视化
+        function generateEmbedding() {
+            const text = document.getElementById('textInput').value;
+            const visual = document.getElementById('embeddingVisual');
+
+            // 模拟生成32维向量
+            const vector = [];
+            for (let i = 0; i < 32; i++) {
+                vector.push((Math.random() * 2 - 1).toFixed(3));
+            }
+
+            visual.innerHTML = vector.map((val, idx) => {
+                const intensity = Math.abs(parseFloat(val));
+                const color = val > 0 ? 'rgba(99, 102, 241,' : 'rgba(139, 92, 246,';
+                return `<div class="embedding-bar" style="
+                    width: ${Math.abs(val) * 100}%;
+                    background: ${color} ${intensity})`;
+                }).join('');
+        }
+
+        // 页面加载时生成一次
+        window.addEventListener('load', () => {
+            generateEmbedding();
+        });
+
+        // 平滑滚动
+        document.querySelectorAll('.nav-item').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // 滚动动画
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.concept-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
