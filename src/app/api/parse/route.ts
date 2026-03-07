@@ -104,7 +104,13 @@ async function parsePDFAsync(pdfId: string) {
     const path = await import('path');
 
     // Get temp file path
-    const tempDir = path.join(process.cwd(), 'tmp', 'pdf-chat');
+    const path = await import('path');
+    const os = await import('os');
+    
+    // Use /tmp for serverless environments
+    const tempDir = process.env.VERCEL 
+      ? path.join('/tmp', 'pdf-chat')
+      : path.join(os.tmpdir(), 'pdf-chat');
     const filePath = path.join(tempDir, `${pdfId}.pdf`);
 
     console.log(`[Parse API] Reading PDF from: ${filePath}`);
