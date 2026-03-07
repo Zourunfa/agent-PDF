@@ -1,6 +1,8 @@
 # PDF AI Chat
-一个基于 Next.js 14 和 LangChain 的 PDF AI 对话 Web 应用。
-链接：little-agent-pdf.vercel.app
+
+**一个基于 Next.js 14 和 LangChain 的 PDF AI 对话 Web 应用。**
+视频地址：https://www.bilibili.com/video/BV1RC1GB6EUi/?spm_id_from=333.1387.homepage.video_card.click
+**访问地址**: [little-agent-pdf.vercel.app)
 
 ## 功能
 
