@@ -102,11 +102,9 @@ async function parsePDFAsync(pdfId: string) {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
+    const os = await import('os');
 
     // Get temp file path
-    const path = await import('path');
-    const os = await import('os');
-    
     // Use /tmp for serverless environments
     const tempDir = process.env.VERCEL 
       ? path.join('/tmp', 'pdf-chat')
