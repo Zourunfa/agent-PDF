@@ -7,23 +7,39 @@ import { Document } from "langchain/document";
 import { embeddings } from "./config";
 
 /**
- * In-memory vector store cache (keyed by PDF ID)
+ * Global singleton for vector store cache
+ * This ensures the cache persists across API route hot reloads in development
  */
-const vectorStoreCache = new Map<string, MemoryVectorStore>();
+declare global {
+  var vectorStoreCache: Map<string, MemoryVectorStore> | undefined;
+}
+
+const getVectorStoreCache = (): Map<string, MemoryVectorStore> => {
+  if (!global.vectorStoreCache) {
+    console.log('[VectorStore] Initializing global vector store cache');
+    global.vectorStoreCache = new Map<string, MemoryVectorStore>();
+  }
+  return global.vectorStoreCache;
+};
 
 /**
  * Get all vector store IDs for debugging
  */
 export function getVectorStoreIds(): string[] {
-  return Array.from(vectorStoreCache.keys());
+  const cache = getVectorStoreCache();
+  const ids = Array.from(cache.keys());
+  console.log(`[VectorStore] getVectorStoreIds called, found: ${ids.length} stores`);
+  return ids;
 }
 
 /**
  * Get or create vector store for a PDF
  */
 export async function getVectorStore(pdfId: string): Promise<MemoryVectorStore | null> {
-  const store = vectorStoreCache.get(pdfId);
+  const cache = getVectorStoreCache();
+  const store = cache.get(pdfId);
   console.log(`[VectorStore] Get vector store for ${pdfId}:`, store ? "Found" : "Not found");
+  console.log(`[VectorStore] Cache size: ${cache.size}, Keys:`, Array.from(cache.keys()));
   return store || null;
 }
 
@@ -34,10 +50,12 @@ export async function createVectorStore(
   pdfId: string,
   documents: Document[]
 ): Promise<MemoryVectorStore> {
+  const cache = getVectorStoreCache();
   console.log(`[VectorStore] Creating vector store for ${pdfId} with ${documents.length} documents`);
   const vectorStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
-  vectorStoreCache.set(pdfId, vectorStore);
+  cache.set(pdfId, vectorStore);
   console.log(`[VectorStore] Vector store created successfully for ${pdfId}`);
+  console.log(`[VectorStore] Cache now has ${cache.size} stores:`, Array.from(cache.keys()));
   return vectorStore;
 }
 
@@ -97,11 +115,25 @@ export async function searchSimilarDocuments(
 
   const results = await vectorStore.similaritySearchWithScore(query, k);
   console.log(`[VectorStore] Found ${results.length} results for query "${query}"`);
+  
+  // Log scores for debugging
+  results.forEach(([doc, score], idx) => {
+    console.log(`[VectorStore] Result ${idx + 1}: score=${score.toFixed(4)}, preview="${doc.pageContent.substring(0, 50)}..."`);
+  });
 
-  // Filter out results with very low similarity scores
-  const filteredResults = results.filter(([, score]) => score > 0.5);
+  // Lower threshold for better recall (0.3 instead of 0.5)
+  // Note: Lower scores are better in some distance metrics
+  const threshold = 0.3;
+  const filteredResults = results.filter(([, score]) => score > threshold);
+  
   if (filteredResults.length < results.length) {
-    console.log(`[VectorStore] Filtered ${results.length - filteredResults.length} low-score results`);
+    console.log(`[VectorStore] Filtered ${results.length - filteredResults.length} low-score results (threshold: ${threshold})`);
+  }
+  
+  // If all results were filtered, return top results anyway
+  if (filteredResults.length === 0 && results.length > 0) {
+    console.log(`[VectorStore] All results filtered, returning top ${Math.min(2, results.length)} anyway`);
+    return results.slice(0, Math.min(2, results.length)).map(([doc]) => doc);
   }
 
   return filteredResults.map(([doc]) => doc);
@@ -111,14 +143,16 @@ export async function searchSimilarDocuments(
  * Clear vector store for a PDF
  */
 export function clearVectorStore(pdfId: string): void {
+  const cache = getVectorStoreCache();
   console.log(`[VectorStore] Clearing vector store for ${pdfId}`);
-  vectorStoreCache.delete(pdfId);
+  cache.delete(pdfId);
 }
 
 /**
  * Clear all vector stores
  */
 export function clearAllVectorStores(): void {
+  const cache = getVectorStoreCache();
   console.log(`[VectorStore] Clearing all vector stores`);
-  vectorStoreCache.clear();
+  cache.clear();
 }

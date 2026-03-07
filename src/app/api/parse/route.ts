@@ -122,10 +122,20 @@ async function parsePDFAsync(pdfId: string) {
     const buffer = await fs.readFile(filePath);
     console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes`);
 
-    const { text, pages } = await parsePDF(buffer);
+    console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
+    const parseResult = await parsePDF(buffer);
+    console.log(`[Parse API] ========== PDF PARSE COMPLETED ==========`);
+    console.log(`[Parse API] Parse result:`, {
+      textLength: parseResult.text.length,
+      pages: parseResult.pages,
+      ocrProcessed: parseResult.info.ocrProcessed || false,
+    });
+
+    const { text, pages } = parseResult;
     console.log(`[Parse API] ✓ Parsed ${text.length} characters from ${pages} pages`);
 
     if (!isValidPDFText(text)) {
+      console.error(`[Parse API] ✗ Invalid PDF text: length=${text.length}`);
       throw new Error("PDF 解析失败或内容为空");
     }
 
