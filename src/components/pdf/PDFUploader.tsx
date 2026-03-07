@@ -1,11 +1,11 @@
 /**
- * PDF Uploader Component - 现代设计
+ * PDF Uploader Component - 科幻深色风格
  */
 
 "use client";
 
 import React, { useCallback, useState } from "react";
-import { Upload, FileText, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, CheckCircle2, Sparkles } from "lucide-react";
 import { usePDF } from "@/contexts/PDFContext";
 import { validatePDFFile } from "@/lib/utils/validation";
 
@@ -53,7 +53,6 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
       if (result.success) {
         const { pdfId, fileName, fileSize, uploadedAt, parseStatus } = result.data;
 
-        // Add PDF to context
         addPDF({
           id: pdfId,
           fileName,
@@ -67,7 +66,6 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
           tempPath: null,
         });
 
-        // Trigger PDF parsing
         console.log(`[Uploader] Triggering parse for PDF: ${pdfId}`);
         const parseResponse = await fetch("/api/parse", {
           method: "POST",
@@ -127,57 +125,73 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
     >
+      {/* 拖拽时的发光边框 */}
+      {isDragging && (
+        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur-lg opacity-75 animate-pulse-glow" />
+      )}
+      
       <div
-        className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+        className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 backdrop-blur-sm ${
           isDragging
-            ? "border-cyan-400 bg-cyan-50/80 shadow-soft-lg scale-[1.01]"
-            : "border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-white hover:border-cyan-300 hover:shadow-soft"
+            ? "border-cyan-400 bg-cyan-500/10 scale-[1.02]"
+            : "border-dashed border-cyan-500/30 bg-slate-900/50 hover:border-cyan-500/50 hover:bg-slate-900/70"
         }`}
       >
-        <div className="relative p-10">
-          {/* Upload Icon */}
-          <div className={`flex flex-col items-center justify-center space-y-5 transition-all duration-300 ${
+        <div className="relative p-8">
+          <div className={`flex flex-col items-center justify-center space-y-4 transition-all duration-300 ${
             isUploading ? "opacity-50" : ""
           }`}>
-            <div className={`relative transition-all duration-300 ${
-              isDragging ? "scale-110" : "hover:scale-105"
-            }`}>
-              {isUploading && uploadProgress === 100 ? (
-                <div className="flex items-center justify-center h-16 w-16 bg-emerald-100 rounded-2xl shadow-soft">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-                </div>
-              ) : (
-                <div className={`flex items-center justify-center h-16 w-16 rounded-2xl transition-all shadow-soft ${
-                  isDragging
-                    ? "bg-gradient-to-br from-cyan-500 to-blue-500 shadow-glow"
-                    : "bg-gradient-to-br from-blue-600 to-cyan-500"
-                }`}>
-                  <Upload className="h-8 w-8 text-white" />
-                </div>
-              )}
+            {/* Upload Icon */}
+            <div className="relative">
+              {/* 背景发光效果 */}
+              <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl blur-xl transition-all duration-300 ${
+                isDragging ? "scale-150 opacity-100" : "scale-100 opacity-50"
+              }`} />
+              
+              <div className={`relative transition-all duration-300 ${
+                isDragging ? "scale-110 rotate-12" : "hover:scale-105"
+              }`}>
+                {isUploading && uploadProgress === 100 ? (
+                  <div className="flex items-center justify-center h-14 w-14 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-xl border border-emerald-500/30 backdrop-blur-sm">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+                  </div>
+                ) : (
+                  <div className={`flex items-center justify-center h-14 w-14 rounded-xl transition-all border ${
+                    isDragging
+                      ? "bg-gradient-to-br from-cyan-500/30 to-purple-500/30 border-cyan-400/50 neon-glow-cyan"
+                      : "bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border-cyan-500/30"
+                  }`}>
+                    <Upload className={`h-6 w-6 transition-all ${
+                      isDragging ? "text-cyan-300" : "text-cyan-400"
+                    }`} />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Text */}
-            <div className="text-center space-y-2">
-              <p className="text-base font-semibold text-slate-900">
+            <div className="text-center space-y-1.5">
+              <p className="text-sm font-semibold text-cyan-400">
                 {isUploading
-                  ? uploadProgress === 100 ? "上传成功！" : "上传中..."
+                  ? uploadProgress === 100 ? "✓ 上传成功" : "上传中..."
                   : isDragging ? "松开上传文件" : "上传 PDF 文档"}
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-xs text-cyan-400/60">
                 {isUploading
                   ? `处理中 ${uploadProgress}%`
-                  : "拖拽文件到这里，或点击选择文件"}
+                  : "拖拽文件到这里，或点击选择"}
               </p>
             </div>
 
             {/* Progress Bar */}
             {isUploading && (
-              <div className="w-64 h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+              <div className="w-full max-w-xs h-1.5 bg-slate-800/50 rounded-full overflow-hidden border border-cyan-500/20">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300 ease-out rounded-full"
+                  className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-300 ease-out rounded-full relative"
                   style={{ width: `${uploadProgress}%` }}
-                />
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-400 blur-sm opacity-50" />
+                </div>
               </div>
             )}
 
@@ -190,17 +204,21 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
                   className="hidden"
                   onChange={handleFileInput}
                 />
-                <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-soft hover:shadow-soft-lg hover:scale-105 transition-all duration-200">
-                  <FileText className="h-4 w-4" />
+                {/* 按钮发光效果 */}
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg opacity-0 group-hover:opacity-75 blur transition-opacity duration-300" />
+                
+                <span className="relative inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-400/50 backdrop-blur-sm transition-all duration-200 group-hover:scale-105">
+                  <FileText className="h-3.5 w-3.5" />
                   选择文件
                 </span>
               </label>
             )}
 
             {/* Hint */}
-            <p className="text-xs text-slate-400">
-              支持 PDF 格式 · 最大 10MB
-            </p>
+            <div className="flex items-center gap-2 text-[10px] text-cyan-400/40">
+              <Sparkles className="h-3 w-3" />
+              <span>支持 PDF 格式 · 最大 10MB · 自动 OCR</span>
+            </div>
           </div>
         </div>
       </div>
