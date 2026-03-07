@@ -96,6 +96,47 @@ async function parsePDFAsync(pdfId: string) {
   console.log(`[Parse API] ============================================================`);
   console.log(`[Parse API] ⚡ async function STARTED for PDF: ${pdfId}`);
   console.log(`[Parse API] Current memory store keys: ${Array.from(parsedPDFs.keys())}`);
+  
+  // Set a hard timeout for the entire parsing process
+  const PARSE_TIMEOUT = 6000; // 6 seconds
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      console.error(`[Parse API] ✗ Hard timeout after ${PARSE_TIMEOUT}ms`);
+      reject(new Error('PDF parsing timeout - file may be too complex'));
+    }, PARSE_TIMEOUT);
+  });
+  
+  try {
+    await Promise.race([
+      parsePDFAsyncInternal(pdfId),
+      timeoutPromise
+    ]);
+  } catch (error) {
+    console.error("[Parse API] ✗ Parse failed with timeout or error:", error);
+    
+    // Mark as failed
+    parsedPDFs.set(pdfId, {
+      textContent: "",
+      pageCount: 0,
+      parseStatus: ParseStatus.FAILED,
+      progress: 0,
+    });
+    
+    // Update storage
+    try {
+      const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
+      const pdfFile = await getPDFFile(pdfId);
+      if (pdfFile) {
+        pdfFile.parseStatus = ParseStatus.FAILED;
+        await addPDFFile(pdfFile);
+      }
+    } catch (storageError) {
+      console.error("[Parse API] ✗ Failed to update storage:", storageError);
+    }
+  }
+}
+
+async function parsePDFAsyncInternal(pdfId: string) {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
@@ -258,24 +299,7 @@ async function parsePDFAsync(pdfId: string) {
       console.error("[Parse API] ✗ Error message:", error.message);
       console.error("[Parse API] ✗ Error stack:", error.stack);
     }
-    parsedPDFs.set(pdfId, {
-      textContent: "",
-      pageCount: 0,
-      parseStatus: ParseStatus.FAILED,
-      progress: 0,
-    });
-    
-    // Also try to update PDF file storage to mark as failed
-    try {
-      const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
-      const pdfFile = await getPDFFile(pdfId);
-      if (pdfFile) {
-        pdfFile.parseStatus = ParseStatus.FAILED;
-        await addPDFFile(pdfFile);
-      }
-    } catch (storageError) {
-      console.error("[Parse API] ✗ Failed to update storage with error status:", storageError);
-    }
+    throw error; // Re-throw to be caught by outer timeout handler
   }
 }
 
