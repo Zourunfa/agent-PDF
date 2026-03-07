@@ -94,12 +94,9 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
 
           // Check if scanned PDF
           if (cleanText.length < 50) {
-            console.warn(`[Parser] ⚠️ Insufficient text, may be scanned PDF`);
+            console.warn(`[Parser] ⚠️ Insufficient text (${cleanText.length} chars), likely scanned PDF`);
             reject(new Error(
-              "此 PDF 文件可能是扫描件，文本内容不足。\n\n" +
-              "建议：\n" +
-              "1. 上传文本型 PDF（可选择文字的 PDF）\n" +
-              "2. 或使用 OCR 工具预处理"
+              "PDF_SCANNED"  // Use error code for better handling
             ));
             return;
           }

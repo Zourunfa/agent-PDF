@@ -113,6 +113,13 @@ async function parsePDFAsync(pdfId: string) {
   } catch (error) {
     console.error("[Parse API] ✗ Parse failed with timeout or error:", error);
     
+    // Check if it's a scanned PDF error
+    const isScannedPDF = error instanceof Error && error.message === 'PDF_SCANNED';
+    
+    if (isScannedPDF) {
+      console.log("[Parse API] ℹ️ PDF is a scanned document (image-based), marking as FAILED");
+    }
+    
     // Mark as failed
     parsedPDFs.set(pdfId, {
       textContent: "",
@@ -128,6 +135,7 @@ async function parsePDFAsync(pdfId: string) {
       if (pdfFile) {
         pdfFile.parseStatus = ParseStatus.FAILED;
         await addPDFFile(pdfFile);
+        console.log(`[Parse API] ✓ Marked PDF as FAILED in storage`);
       }
     } catch (storageError) {
       console.error("[Parse API] ✗ Failed to update storage:", storageError);
@@ -193,19 +201,8 @@ async function parsePDFAsyncInternal(pdfId: string) {
     console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
     console.log(`[Parse API] ⏱️ Breakdown: File read ${readTime}ms + Parse ${parseTime}ms = ${readTime + parseTime}ms total`);
     
-    console.log(`[Parse API] Parse result:`, {
-      textLength: parseResult.text.length,
-      pages: parseResult.pages,
-      ocrProcessed: parseResult.info.ocrProcessed || false,
-    });
-
     const { text, pages } = parseResult;
-    console.log(`[Parse API] ✓ Parsed ${text.length} characters from ${pages} pages`);
-
-    if (!isValidPDFText(text)) {
-      console.error(`[Parse API] ✗ Invalid PDF text: length=${text.length}`);
-      throw new Error("PDF 解析失败或内容为空");
-    }
+    console.log(`[Parse API] ✓ Extracted ${text.length} characters from ${pages} pages`);
 
     // Update status
     parsedPDFs.set(pdfId, {
