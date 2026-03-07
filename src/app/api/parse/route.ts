@@ -45,8 +45,26 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Parse API] ✓ Received parse request for PDF: ${pdfId}`);
 
-    // Check if already parsed
-    const existing = parsedPDFs.get(pdfId);
+    // Check if already parsed (also check storage for serverless)
+    let existing = parsedPDFs.get(pdfId);
+    if (!existing) {
+      try {
+        const { getPDFFile } = await import("@/lib/storage/pdf-files");
+        const pdfFile = await getPDFFile(pdfId);
+        if (pdfFile && pdfFile.parseStatus === ParseStatus.COMPLETED && pdfFile.textContent) {
+          existing = {
+            textContent: pdfFile.textContent,
+            pageCount: pdfFile.pageCount || 0,
+            parseStatus: pdfFile.parseStatus,
+            progress: 100,
+          };
+          console.log(`[Parse API] ✓ Found completed PDF in storage`);
+        }
+      } catch (e) {
+        // Ignore storage errors
+      }
+    }
+
     if (existing && existing.parseStatus === ParseStatus.COMPLETED) {
       console.log(`[Parse API] ✓ PDF ${pdfId} already parsed`);
       return NextResponse.json({
@@ -302,7 +320,27 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const parsed = parsedPDFs.get(pdfId);
+  // First check in-memory parsed PDFs
+  let parsed = parsedPDFs.get(pdfId);
+
+  // If not in memory, try to load from PDF storage (for Vercel serverless)
+  if (!parsed) {
+    try {
+      const { getPDFFile } = await import("@/lib/storage/pdf-files");
+      const pdfFile = await getPDFFile(pdfId);
+      if (pdfFile) {
+        parsed = {
+          textContent: pdfFile.textContent || "",
+          pageCount: pdfFile.pageCount || 0,
+          parseStatus: pdfFile.parseStatus,
+          progress: pdfFile.parseStatus === ParseStatus.COMPLETED ? 100 : 0,
+        };
+        console.log(`[Parse API] ✓ Loaded PDF ${pdfId} from storage`);
+      }
+    } catch (error) {
+      console.error(`[Parse API] ✗ Failed to load PDF ${pdfId} from storage:`, error);
+    }
+  }
 
   if (!parsed) {
     return NextResponse.json(

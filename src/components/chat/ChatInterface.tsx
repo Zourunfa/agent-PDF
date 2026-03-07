@@ -60,7 +60,7 @@ export function ChatInterface() {
 
     const userMessage = createUserMessage(conversationId!, activePdfId, input);
     const userInput = input;
-    
+
     setInput("");
     setStreaming(true);
     addMessage(conversationId!, userMessage);
@@ -74,6 +74,9 @@ export function ChatInterface() {
           question: userInput,
           conversationId: conversationId!,
           history: messages,
+          // Send PDF text content to server (for Vercel serverless support)
+          pdfTextContent: activePdf?.textContent || undefined,
+          pdfPageCount: activePdf?.pageCount || undefined,
         }),
       });
 

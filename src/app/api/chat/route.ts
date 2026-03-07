@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const { getChatModel, isApiKeyConfigured } = await import("@/lib/langchain/config");
   const { searchSimilarDocuments, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
   
-  const { pdfId, question, conversationId, history } = await req.json();
+  const { pdfId, question, conversationId, history, pdfTextContent, pdfPageCount } = await req.json();
 
   console.log(`[Chat API] Received chat request for PDF: ${pdfId}, question: "${question}"`);
   console.log(`[Chat API] API Key configured: ${isApiKeyConfigured}`);
@@ -95,33 +95,50 @@ export async function POST(req: NextRequest) {
             const { getPDFFile } = await import("@/lib/storage/pdf-files");
             const { splitTextWithMetadata } = await import("@/lib/pdf/text-splitter");
             const { createVectorStoreFromChunks } = await import("@/lib/langchain/vector-store");
-            
-            console.log(`[Chat API] Checking PDF file storage...`);
-            const pdfFile = await getPDFFile(pdfId);
-            console.log(`[Chat API] PDF file found: ${!!pdfFile}`);
-            
-            if (pdfFile) {
-              console.log(`[Chat API] PDF details:`, {
-                fileName: pdfFile.fileName,
-                hasTextContent: !!pdfFile.textContent,
-                textLength: pdfFile.textContent?.length || 0,
-                pageCount: pdfFile.pageCount,
-              });
+
+            let textToUse: string | null = null;
+            let pageCountToUse = 0;
+
+            // First, try to use text content from client (for Vercel serverless)
+            if (pdfTextContent) {
+              console.log(`[Chat API] ✓ Using PDF text from client request (${pdfTextContent.length} chars)`);
+              textToUse = pdfTextContent;
+              pageCountToUse = pdfPageCount || 0;
+            } else {
+              // Fallback: Try to load from server storage (works in local dev)
+              console.log(`[Chat API] Checking PDF file storage...`);
+              const pdfFile = await getPDFFile(pdfId);
+              console.log(`[Chat API] PDF file found: ${!!pdfFile}`);
+
+              if (pdfFile) {
+                console.log(`[Chat API] PDF details:`, {
+                  fileName: pdfFile.fileName,
+                  hasTextContent: !!pdfFile.textContent,
+                  textLength: pdfFile.textContent?.length || 0,
+                  pageCount: pdfFile.pageCount,
+                });
+              }
+
+              if (pdfFile && pdfFile.textContent) {
+                console.log(`[Chat API] ✓ Found PDF text in storage (${pdfFile.textContent.length} chars)`);
+                textToUse = pdfFile.textContent;
+                pageCountToUse = pdfFile.pageCount || 0;
+              }
             }
-            
-            if (pdfFile && pdfFile.textContent) {
-              console.log(`[Chat API] ✓ Found PDF text (${pdfFile.textContent.length} chars), recreating vector store...`);
+
+            if (textToUse) {
+              console.log(`[Chat API] ✓ Recreating vector store with ${textToUse.length} chars...`);
               const chunks = await splitTextWithMetadata(
-                pdfFile.textContent,
-                { pdfId, source: "pdf", pageCount: pdfFile.pageCount || 0 }
+                textToUse,
+                { pdfId, source: "pdf", pageCount: pageCountToUse }
               );
               console.log(`[Chat API] ✓ Created ${chunks.length} chunks`);
               await createVectorStoreFromChunks(pdfId, chunks);
               console.log(`[Chat API] ✓ Vector store recreated successfully`);
               console.log(`[Chat API] ✓ New vector stores: ${getVectorStoreIds().join(', ')}`);
             } else {
-              console.error(`[Chat API] ✗ PDF file not found or has no text content`);
-              console.error(`[Chat API] ✗ This means the PDF was not properly parsed or storage was cleared`);
+              console.error(`[Chat API] ✗ No PDF text content available`);
+              console.error(`[Chat API] ✗ Client should send pdfTextContent, or storage should have the text`);
             }
           } catch (recreateError) {
             console.error(`[Chat API] ✗ Failed to recreate vector store:`, recreateError);
