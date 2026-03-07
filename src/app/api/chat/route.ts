@@ -12,12 +12,33 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   // Lazy load LangChain config to avoid build-time execution
-  const { chatModel } = await import("@/lib/langchain/config");
+  const { getChatModel, isApiKeyConfigured } = await import("@/lib/langchain/config");
   const { searchSimilarDocuments, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
   
   const { pdfId, question, conversationId, history } = await req.json();
 
   console.log(`[Chat API] Received chat request for PDF: ${pdfId}, question: "${question}"`);
+  console.log(`[Chat API] API Key configured: ${isApiKeyConfigured}`);
+  
+  // Check if API key is configured
+  if (!isApiKeyConfigured) {
+    return new Response(
+      JSON.stringify({
+        type: "error",
+        error: {
+          code: "AI_NOT_CONFIGURED",
+          message: "AI 服务未配置。请在 Vercel 环境变量中设置 ALIBABA_API_KEY 或 QWEN_API_KEY。",
+        },
+      }),
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+  
   console.log(`[Chat API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
 
   if (!pdfId || !question) {
@@ -120,6 +141,7 @@ export async function POST(req: NextRequest) {
 
         // Stream response from Qwen
         console.log(`[Chat API] Calling Qwen API...`);
+        const chatModel = getChatModel();
         const response = await chatModel.stream([systemMessage, userMessage]);
 
         let tokenCount = 0;

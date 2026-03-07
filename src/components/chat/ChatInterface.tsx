@@ -11,12 +11,13 @@ import { useChat } from "@/contexts/ChatContext";
 import { usePDF } from "@/contexts/PDFContext";
 import { createUserMessage, createAssistantMessage } from "@/lib/chat/conversation";
 import { MessageRole } from "@/types/chat";
+import { ParseStatus } from "@/types/pdf";
 import { ChatMessage } from "./ChatMessage";
 
 const { TextArea } = Input;
 
 export function ChatInterface() {
-  const { activePdfId } = usePDF();
+  const { activePdfId, pdfs } = usePDF();
   const {
     conversations,
     activeConversationId,
@@ -37,6 +38,11 @@ export function ChatInterface() {
 
   const messages = activeConversationId ? conversations.get(activeConversationId) || [] : [];
   const conversationId = activePdfId ? `conv-${activePdfId}` : null;
+  
+  // Check if current PDF is still parsing
+  const activePdf = activePdfId ? pdfs.get(activePdfId) : null;
+  const isParsing = activePdf?.parseStatus === ParseStatus.PARSING;
+  const isDisabled = isStreaming || isParsing;
 
   useEffect(() => {
     if (conversationId && conversationId !== activeConversationId) {
@@ -49,7 +55,7 @@ export function ChatInterface() {
   }, [messages, localMessages]);
 
   const handleSubmit = useCallback(async () => {
-    if (!input.trim() || !activePdfId || isStreaming) return;
+    if (!input.trim() || !activePdfId || isDisabled) return;
 
     const userMessage = createUserMessage(conversationId!, activePdfId, input);
     const userInput = input;
@@ -113,7 +119,7 @@ export function ChatInterface() {
       setStreaming(false);
       setTimeout(() => setLocalMessages([]), 100);
     }
-  }, [input, activePdfId, isStreaming, conversationId, messages, addMessage, setStreaming]);
+  }, [input, activePdfId, isDisabled, conversationId, messages, addMessage, setStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -222,8 +228,8 @@ export function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入您的问题..."
-            disabled={isStreaming}
+            placeholder={isParsing ? "文档解析中，请稍候..." : "输入您的问题..."}
+            disabled={isDisabled}
             autoSize={{ minRows: 1, maxRows: 4 }}
             style={{ resize: 'none' }}
           />
@@ -231,16 +237,22 @@ export function ChatInterface() {
             type="primary"
             icon={<SendOutlined />}
             onClick={handleSubmit}
-            disabled={!input.trim() || isStreaming}
+            disabled={!input.trim() || isDisabled}
             loading={isStreaming}
           >
             发送
           </Button>
         </Space.Compact>
         <div style={{ marginTop: 8, fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
-          <Tag variant="filled" style={{ fontSize: 10 }}>Enter</Tag> 发送
-          <span style={{ margin: '0 8px' }}>·</span>
-          <Tag variant="filled" style={{ fontSize: 10 }}>Shift + Enter</Tag> 换行
+          {isParsing ? (
+            <span style={{ color: '#F59E0B' }}>⏳ 文档解析中...</span>
+          ) : (
+            <>
+              <Tag variant="filled" style={{ fontSize: 10 }}>Enter</Tag> 发送
+              <span style={{ margin: '0 8px' }}>·</span>
+              <Tag variant="filled" style={{ fontSize: 10 }}>Shift + Enter</Tag> 换行
+            </>
+          )}
         </div>
       </div>
     </div>

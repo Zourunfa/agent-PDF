@@ -10,6 +10,9 @@ import { VoyageEmbeddings } from "@langchain/community/embeddings/voyage";
 const qwenApiKey = process.env.ALIBABA_API_KEY || process.env.QWEN_API_KEY || "";
 const voyageApiKey = ""; // Force disable Voyage AI to use Qwen
 
+// Check if API key is configured
+export const isApiKeyConfigured = !!qwenApiKey || !!voyageApiKey;
+
 // Log which embedding model is being used
 if (qwenApiKey) {
   console.log("✓ Using Qwen (Alibaba Tongyi) for embeddings");
@@ -20,32 +23,43 @@ if (qwenApiKey) {
 }
 
 /**
- * Chat model configuration - 使用通义千问
+ * Get chat model - throws error if not configured
  */
-export const chatModel = new ChatAlibabaTongyi({
-  alibabaApiKey: qwenApiKey,
-  modelName: process.env.QWEN_MODEL || "qwen-turbo",
-  temperature: 0.7,
-  streaming: true,
-});
+export function getChatModel() {
+  if (!qwenApiKey) {
+    throw new Error("AI_NOT_CONFIGURED: Please configure ALIBABA_API_KEY or QWEN_API_KEY in environment variables");
+  }
+  
+  return new ChatAlibabaTongyi({
+    alibabaApiKey: qwenApiKey,
+    modelName: process.env.QWEN_MODEL || "qwen-turbo",
+    temperature: 0.7,
+    streaming: true,
+  });
+}
 
 /**
- * Embeddings configuration - Priority: Voyage AI > Qwen
- * Voyage AI provides Claude-compatible embeddings
+ * Get embeddings - throws error if not configured
  */
-export const embeddings = voyageApiKey
-  ? new VoyageEmbeddings({
-      apiKey: voyageApiKey,
-      modelName: "voyage-3", // Latest embedding model, Claude-compatible
-      inputType: "document",
-    })
-  : new AlibabaTongyiEmbeddings({
-      apiKey: qwenApiKey,
-      modelName: "text-embedding-v2" as const,
-    });
+export function getEmbeddings() {
+  if (!qwenApiKey && !voyageApiKey) {
+    throw new Error("AI_NOT_CONFIGURED: Please configure ALIBABA_API_KEY or QWEN_API_KEY in environment variables");
+  }
+  
+  return voyageApiKey
+    ? new VoyageEmbeddings({
+        apiKey: voyageApiKey,
+        modelName: "voyage-3",
+        inputType: "document",
+      })
+    : new AlibabaTongyiEmbeddings({
+        apiKey: qwenApiKey,
+        modelName: "text-embedding-v2" as const,
+      });
+}
 
 /**
- * Fallback models
+ * Legacy exports for backward compatibility
  */
-export const fallbackChatModel = chatModel;
-export const fallbackEmbeddings = embeddings;
+export const chatModel = qwenApiKey ? getChatModel() : null as any;
+export const embeddings = (qwenApiKey || voyageApiKey) ? getEmbeddings() : null as any;
