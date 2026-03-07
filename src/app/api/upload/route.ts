@@ -6,9 +6,71 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { validatePDFFile } from "@/lib/utils/validation";
 import { saveTempFile, generateTempFileName } from "@/lib/storage/temp-files";
-import { addPDFFile } from "@/lib/storage/pdf-files";
+import { addPDFFile, getPDFFile } from "@/lib/storage/pdf-files";
 import { ParseStatus } from "@/types/pdf";
 import { formatErrorResponse } from "@/lib/utils/errors";
+import { parsePDF } from "@/lib/pdf/parser";
+import { splitTextWithMetadata } from "@/lib/pdf/text-splitter";
+import { createVectorStoreFromChunks } from "@/lib/langchain/vector-store";
+
+/**
+ * Parse PDF in background after upload
+ */
+async function parsePDFInBackground(pdfId: string) {
+  try {
+    console.log(`[Background Parse] Starting parse for ${pdfId}`);
+
+    const pdfFile = await getPDFFile(pdfId);
+    if (!pdfFile) {
+      console.error(`[Background Parse] PDF ${pdfId} not found`);
+      return;
+    }
+
+    // Update status to parsing
+    pdfFile.parseStatus = ParseStatus.PARSING;
+    await addPDFFile(pdfFile);
+
+    // Read PDF file and extract text
+    const fs = await import('fs/promises');
+    const buffer = await fs.readFile(pdfFile.tempPath);
+    console.log(`[Background Parse] PDF file read: ${buffer.length} bytes`);
+
+    // Parse PDF
+    const { text, pages } = await parsePDF(buffer);
+    console.log(`[Background Parse] Extracted ${text.length} chars from ${pages} pages`);
+
+    // Update PDF file with parsed content
+    pdfFile.textContent = text;
+    pdfFile.pageCount = pages;
+    pdfFile.parseStatus = ParseStatus.COMPLETED;
+    await addPDFFile(pdfFile);
+    console.log(`[Background Parse] ✓ PDF ${pdfId} parsing completed`);
+
+    // Create vector store for chat
+    const chunks = await splitTextWithMetadata(
+      text,
+      { pdfId, source: "pdf", pageCount: pages }
+    );
+    console.log(`[Background Parse] Created ${chunks.length} chunks`);
+
+    await createVectorStoreFromChunks(pdfId, chunks);
+    console.log(`[Background Parse] ✓ Vector store created for ${pdfId}`);
+
+  } catch (error) {
+    console.error(`[Background Parse] ✗ Failed to parse ${pdfId}:`, error);
+
+    // Mark as failed
+    try {
+      const pdfFile = await getPDFFile(pdfId);
+      if (pdfFile) {
+        pdfFile.parseStatus = ParseStatus.FAILED;
+        await addPDFFile(pdfFile);
+      }
+    } catch (updateError) {
+      console.error(`[Background Parse] ✗ Failed to update status:`, updateError);
+    }
+  }
+}
 
 export async function POST(req: NextRequest) {
   console.log('📬 收到上传请求');
@@ -98,6 +160,13 @@ export async function POST(req: NextRequest) {
     await addPDFFile(pdfFile);
 
     console.log('✅ 上传完成，准备返回响应');
+
+    // Trigger PDF parsing in background (non-blocking)
+    // In Vercel serverless, we need to parse immediately since we can't spawn background tasks
+    console.log('🔄 Triggering PDF parsing...');
+    parsePDFInBackground(pdfId).catch(error => {
+      console.error(`❌ Background parsing failed for ${pdfId}:`, error);
+    });
 
     // Convert buffer to base64 for frontend caching (Vercel Serverless workaround)
     const base64Data = buffer.toString('base64');
