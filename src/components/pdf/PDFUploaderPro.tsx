@@ -14,7 +14,7 @@ import { validatePDFFile } from "@/lib/utils/validation";
 const { Dragger } = Upload;
 
 export function PDFUploaderPro() {
-  const { addPDF } = usePDF();
+  const { addPDF, setActivePdf } = usePDF();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -133,6 +133,10 @@ export function PDFUploaderPro() {
             base64Data, // Cache base64 data for preview (Vercel workaround)
           });
           console.log('✅ addPDF 完成');
+
+          // 自动选中刚上传的 PDF，启用对话功能
+          console.log('🎯 [STEP 7.1] 自动选中 PDF:', pdfId);
+          setActivePdf(pdfId);
 
           console.log('📖 [STEP 8] 开始解析PDF...');
           const parseStartTime = Date.now();
