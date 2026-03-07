@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const pdf = getPDFFile(params.id);
+    const pdf = await getPDFFile(params.id);
 
     if (!pdf) {
       return NextResponse.json(

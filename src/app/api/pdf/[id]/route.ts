@@ -21,7 +21,7 @@ export async function GET(
     const allPDFs = getAllPDFFiles();
     console.log('[PDF API] All PDFs in storage:', allPDFs.map(p => ({ id: p.id, name: p.fileName, hasPath: !!p.tempPath })));
 
-    const pdf = getPDFFile(pdfId);
+    const pdf = await getPDFFile(pdfId);
 
     if (!pdf) {
       console.error('[PDF API] ❌ PDF not found in storage:', pdfId);

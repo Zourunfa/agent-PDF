@@ -79,36 +79,59 @@ export async function POST(req: NextRequest) {
 
         // Search for relevant context
         console.log(`[Chat API] Searching for relevant documents...`);
-        console.log(`[Chat API] Available vector stores: ${getVectorStoreIds().join(', ')}`);
+        const vectorStoreIds = getVectorStoreIds();
+        console.log(`[Chat API] Available vector stores: ${vectorStoreIds.join(', ')}`);
+        console.log(`[Chat API] Looking for PDF: ${pdfId}`);
+        console.log(`[Chat API] Vector store exists: ${vectorStoreIds.includes(pdfId)}`);
 
         let relevantDocs: LangChainDocument[] = [];
         
         // Check if vector store exists
-        const hasVectorStore = getVectorStoreIds().includes(pdfId);
+        const hasVectorStore = vectorStoreIds.includes(pdfId);
         
         if (!hasVectorStore) {
-          console.log(`[Chat API] Vector store not found, attempting to recreate...`);
+          console.log(`[Chat API] ⚠️ Vector store not found, attempting to recreate...`);
           try {
             const { getPDFFile } = await import("@/lib/storage/pdf-files");
             const { splitTextWithMetadata } = await import("@/lib/pdf/text-splitter");
             const { createVectorStoreFromChunks } = await import("@/lib/langchain/vector-store");
             
-            const pdfFile = getPDFFile(pdfId);
+            console.log(`[Chat API] Checking PDF file storage...`);
+            const pdfFile = await getPDFFile(pdfId);
+            console.log(`[Chat API] PDF file found: ${!!pdfFile}`);
+            
+            if (pdfFile) {
+              console.log(`[Chat API] PDF details:`, {
+                fileName: pdfFile.fileName,
+                hasTextContent: !!pdfFile.textContent,
+                textLength: pdfFile.textContent?.length || 0,
+                pageCount: pdfFile.pageCount,
+              });
+            }
+            
             if (pdfFile && pdfFile.textContent) {
-              console.log(`[Chat API] Found PDF text (${pdfFile.textContent.length} chars), recreating vector store...`);
+              console.log(`[Chat API] ✓ Found PDF text (${pdfFile.textContent.length} chars), recreating vector store...`);
               const chunks = await splitTextWithMetadata(
                 pdfFile.textContent,
                 { pdfId, source: "pdf", pageCount: pdfFile.pageCount || 0 }
               );
-              console.log(`[Chat API] Created ${chunks.length} chunks`);
+              console.log(`[Chat API] ✓ Created ${chunks.length} chunks`);
               await createVectorStoreFromChunks(pdfId, chunks);
               console.log(`[Chat API] ✓ Vector store recreated successfully`);
+              console.log(`[Chat API] ✓ New vector stores: ${getVectorStoreIds().join(', ')}`);
             } else {
               console.error(`[Chat API] ✗ PDF file not found or has no text content`);
+              console.error(`[Chat API] ✗ This means the PDF was not properly parsed or storage was cleared`);
             }
           } catch (recreateError) {
             console.error(`[Chat API] ✗ Failed to recreate vector store:`, recreateError);
+            if (recreateError instanceof Error) {
+              console.error(`[Chat API] ✗ Error details:`, recreateError.message);
+              console.error(`[Chat API] ✗ Stack:`, recreateError.stack);
+            }
           }
+        } else {
+          console.log(`[Chat API] ✓ Vector store exists in memory`);
         }
         
         // Now try to search
@@ -121,7 +144,7 @@ export async function POST(req: NextRequest) {
 
         if (relevantDocs.length === 0) {
           console.warn(`[Chat API] No relevant documents found for PDF ${pdfId}`);
-          const errorMsg = "抱歉，无法找到文档内容。请尝试重新上传文档。";
+          const errorMsg = "抱歉，无法找到文档内容。文档可能未完成解析，或者服务器已重启导致数据丢失。请重新上传文档。";
 
           controller.enqueue(
             encoder.encode(
