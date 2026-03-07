@@ -80,14 +80,15 @@ export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
 export async function getPDF(pdfId: string): Promise<PDFFile | null> {
   try {
     const key = `${PDF_PREFIX}${pdfId}`;
-    const data = await redis.get<string>(key);
+    const data = await redis.get(key);
 
     if (!data) {
       console.log(`[Redis] PDF ${pdfId} not found`);
       return null;
     }
 
-    const parsed = JSON.parse(data);
+    // @upstash/redis auto-deserializes JSON, no need to parse
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
     const pdf: PDFFile = {
       ...parsed,
       uploadedAt: new Date(parsed.uploadedAt),
@@ -139,8 +140,8 @@ export async function setVectorChunks(
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
 
-    // Store chunks with 7 day expiration
-    await redis.set(key, JSON.stringify(chunks), { ex: 60 * 60 * 24 * 7 });
+    // @upstash/redis auto-serializes objects
+    await redis.set(key, chunks, { ex: 60 * 60 * 24 * 7 });
 
     console.log(`[Redis] ✓ Stored ${chunks.length} vector chunks for ${pdfId}`);
   } catch (error) {
@@ -177,14 +178,15 @@ export async function getVectorChunks(
 ): Promise<Array<{ content: string; metadata: Record<string, unknown> }> | null> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
-    const data = await redis.get<string>(key);
+    const data = await redis.get(key);
 
     if (!data) {
       console.log(`[Redis] Vector chunks for ${pdfId} not found`);
       return null;
     }
 
-    const chunks = JSON.parse(data);
+    // @upstash/redis auto-deserializes JSON
+    const chunks = typeof data === 'string' ? JSON.parse(data) : data;
     console.log(`[Redis] ✓ Retrieved ${chunks.length} vector chunks for ${pdfId}`);
     return chunks;
   } catch (error) {
