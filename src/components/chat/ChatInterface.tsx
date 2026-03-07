@@ -42,7 +42,8 @@ export function ChatInterface() {
   // Check if current PDF is still parsing
   const activePdf = activePdfId ? pdfs.get(activePdfId) : null;
   const isParsing = activePdf?.parseStatus === ParseStatus.PARSING;
-  const isDisabled = isStreaming || isParsing;
+  const isFailed = activePdf?.parseStatus === ParseStatus.FAILED;
+  const isDisabled = isStreaming || isParsing || isFailed;
 
   useEffect(() => {
     if (conversationId && conversationId !== activeConversationId) {
@@ -242,12 +243,37 @@ export function ChatInterface() {
 
       {/* Input */}
       <div style={{ padding: 16, borderTop: '1px solid #F0F0F0' }}>
+        {isFailed && (
+          <Card
+            size="small"
+            style={{ 
+              marginBottom: 12, 
+              background: '#FEF2F2', 
+              borderColor: '#FCA5A5' 
+            }}
+          >
+            <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#DC2626' }}>
+                ⚠️ PDF 解析失败
+              </div>
+              <div style={{ fontSize: 12, color: '#991B1B' }}>
+                无法自动提取文档内容。请在左侧 PDF 列表中点击"手动输入"按钮，粘贴文档文本后即可开始对话。
+              </div>
+            </Space>
+          </Card>
+        )}
         <Space.Compact style={{ width: '100%' }}>
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isParsing ? "文档解析中，请稍候..." : "输入您的问题..."}
+            placeholder={
+              isFailed 
+                ? "请先手动输入文档内容..." 
+                : isParsing 
+                  ? "文档解析中，请稍候..." 
+                  : "输入您的问题..."
+            }
             disabled={isDisabled}
             autoSize={{ minRows: 1, maxRows: 4 }}
             style={{ resize: 'none' }}
@@ -265,6 +291,8 @@ export function ChatInterface() {
         <div style={{ marginTop: 8, fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
           {isParsing ? (
             <span style={{ color: '#F59E0B' }}>⏳ 文档解析中...</span>
+          ) : isFailed ? (
+            <span style={{ color: '#DC2626' }}>❌ 解析失败，请手动输入文档内容</span>
           ) : (
             <>
               <Tag variant="filled" style={{ fontSize: 10 }}>Enter</Tag> 发送
