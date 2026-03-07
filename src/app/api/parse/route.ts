@@ -23,6 +23,7 @@ const parsedPDFs = new Map<string, {
 export async function POST(req: NextRequest) {
   // Lazy load vector store to avoid build-time execution
   const { createVectorStoreFromChunks, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
+  
   try {
     const body = await req.json();
     const { pdfId } = body;
@@ -165,15 +166,17 @@ async function parsePDFAsync(pdfId: string) {
     console.log(`[Parse API] API Key configured: ${!!process.env.ALIBABA_API_KEY || !!process.env.QWEN_API_KEY}`);
 
     try {
+      // Lazy load vector store functions
+      const { createVectorStoreFromChunks, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
       await createVectorStoreFromChunks(pdfId, chunks);
       console.log(`[Parse API] ✓ Vector store created successfully`);
+      console.log(`[Parse API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
     } catch (vectorError) {
       console.error(`[Parse API] ✗ Vector store creation failed:`, vectorError);
       // Continue anyway - text is parsed, just vector search won't work
     }
 
     console.log(`[Parse API] ✓ PDF parsed successfully: ${pdfId}, ${pages} pages, ${chunks.length} chunks`);
-    console.log(`[Parse API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
     console.log(`[Parse API] ============================================================`);
   } catch (error) {
     console.error("[Parse API] ✗ Async parse error:", error);

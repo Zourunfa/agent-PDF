@@ -62,3 +62,6 @@ Thumbs.db
 .specify/
 specs/
 spec-kit/
+
+.vercel
+.env*.local

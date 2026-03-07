@@ -5,7 +5,7 @@
 "use client";
 
 import React from "react";
-import { List, Typography, Tag, Button, Space, Empty } from "antd";
+import { Typography, Tag, Button, Space, Empty } from "antd";
 import { FileTextOutlined, DeleteOutlined, LoadingOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { usePDF } from "@/contexts/PDFContext";
 import { ParseStatus } from "@/types/pdf";
@@ -28,26 +28,26 @@ export function PDFList() {
   }
 
   return (
-    <List
-      size="small"
-      dataSource={pdfList}
-      renderItem={(pdf) => {
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {pdfList.map((pdf) => {
         const isActive = pdf.id === activePdfId;
         const isParsing = pdf.parseStatus === ParseStatus.PARSING;
         const isCompleted = pdf.parseStatus === ParseStatus.COMPLETED;
 
         return (
-          <List.Item
+          <div
             key={pdf.id}
             onClick={() => setActivePdf(pdf.id)}
             style={{
               cursor: 'pointer',
               backgroundColor: isActive ? '#F0F5FF' : 'transparent',
               borderRadius: 8,
-              marginBottom: 4,
               padding: '8px 12px',
               border: isActive ? '1px solid #ADC6FF' : '1px solid transparent',
               transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
@@ -60,52 +60,54 @@ export function PDFList() {
               }
             }}
           >
-            <List.Item.Meta
-              avatar={
-                isParsing ? (
-                  <LoadingOutlined style={{ fontSize: 20, color: '#6366F1' }} />
-                ) : isCompleted ? (
-                  <CheckCircleOutlined style={{ fontSize: 20, color: '#10B981' }} />
-                ) : (
-                  <FileTextOutlined style={{ fontSize: 20, color: '#6366F1' }} />
-                )
-              }
-              title={
-                <Text
-                  strong={isActive}
-                  ellipsis
-                  style={{
-                    fontSize: 13,
-                    color: isActive ? '#1E1B4B' : '#4B5563',
-                  }}
-                >
-                  {pdf.fileName}
+            {/* Icon */}
+            <div style={{ flexShrink: 0 }}>
+              {isParsing ? (
+                <LoadingOutlined style={{ fontSize: 20, color: '#6366F1' }} />
+              ) : isCompleted ? (
+                <CheckCircleOutlined style={{ fontSize: 20, color: '#10B981' }} />
+              ) : (
+                <FileTextOutlined style={{ fontSize: 20, color: '#6366F1' }} />
+              )}
+            </div>
+
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                strong={isActive}
+                ellipsis
+                style={{
+                  fontSize: 13,
+                  color: isActive ? '#1E1B4B' : '#4B5563',
+                  display: 'block',
+                }}
+              >
+                {pdf.fileName}
+              </Text>
+              <Space size={4} style={{ fontSize: 11 }}>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {(pdf.fileSize / 1024 / 1024).toFixed(1)} MB
                 </Text>
-              }
-              description={
-                <Space size={4} style={{ fontSize: 11 }}>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {(pdf.fileSize / 1024 / 1024).toFixed(1)} MB
-                  </Text>
-                  {pdf.pageCount && (
-                    <>
-                      <Text type="secondary">·</Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {pdf.pageCount} 页
-                      </Text>
-                    </>
-                  )}
-                  {isParsing && (
-                    <>
-                      <Text type="secondary">·</Text>
-                      <Tag color="processing" style={{ fontSize: 10, margin: 0 }}>
-                        解析中
-                      </Tag>
-                    </>
-                  )}
-                </Space>
-              }
-            />
+                {pdf.pageCount && (
+                  <>
+                    <Text type="secondary">·</Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {pdf.pageCount} 页
+                    </Text>
+                  </>
+                )}
+                {isParsing && (
+                  <>
+                    <Text type="secondary">·</Text>
+                    <Tag color="processing" style={{ fontSize: 10, margin: 0 }}>
+                      解析中
+                    </Tag>
+                  </>
+                )}
+              </Space>
+            </div>
+
+            {/* Delete Button */}
             <Button
               type="text"
               danger
@@ -115,7 +117,7 @@ export function PDFList() {
                 e.stopPropagation();
                 removePDF(pdf.id);
               }}
-              style={{ opacity: 0.6 }}
+              style={{ opacity: 0.6, flexShrink: 0 }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = '1';
               }}
@@ -123,9 +125,9 @@ export function PDFList() {
                 e.currentTarget.style.opacity = '0.6';
               }}
             />
-          </List.Item>
+          </div>
         );
-      }}
-    />
+      })}
+    </div>
   );
 }
