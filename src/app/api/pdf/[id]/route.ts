@@ -18,7 +18,7 @@ export async function GET(
     console.log('[PDF API] Fetching PDF for ID:', pdfId);
 
     // 列出所有存储的PDF（调试用）
-    const allPDFs = getAllPDFFiles();
+    const allPDFs = await getAllPDFFiles();
     console.log('[PDF API] All PDFs in storage:', allPDFs.map(p => ({ id: p.id, name: p.fileName, hasPath: !!p.tempPath })));
 
     const pdf = await getPDFFile(pdfId);
