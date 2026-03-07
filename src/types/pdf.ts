@@ -28,6 +28,7 @@ export interface PDFFile {
   textContent: string | null;
   pageCount: number | null;
   tempPath: string | null;
+  base64Data?: string; // Base64-encoded PDF data for preview (frontend only)
 }
 
 export interface UploadTask {
