@@ -82,6 +82,36 @@ export async function POST(req: NextRequest) {
         console.log(`[Chat API] Available vector stores: ${getVectorStoreIds().join(', ')}`);
 
         let relevantDocs: LangChainDocument[] = [];
+        
+        // Check if vector store exists
+        const hasVectorStore = getVectorStoreIds().includes(pdfId);
+        
+        if (!hasVectorStore) {
+          console.log(`[Chat API] Vector store not found, attempting to recreate...`);
+          try {
+            const { getPDFFile } = await import("@/lib/storage/pdf-files");
+            const { splitTextWithMetadata } = await import("@/lib/pdf/text-splitter");
+            const { createVectorStoreFromChunks } = await import("@/lib/langchain/vector-store");
+            
+            const pdfFile = getPDFFile(pdfId);
+            if (pdfFile && pdfFile.textContent) {
+              console.log(`[Chat API] Found PDF text (${pdfFile.textContent.length} chars), recreating vector store...`);
+              const chunks = await splitTextWithMetadata(
+                pdfFile.textContent,
+                { pdfId, source: "pdf", pageCount: pdfFile.pageCount || 0 }
+              );
+              console.log(`[Chat API] Created ${chunks.length} chunks`);
+              await createVectorStoreFromChunks(pdfId, chunks);
+              console.log(`[Chat API] ✓ Vector store recreated successfully`);
+            } else {
+              console.error(`[Chat API] ✗ PDF file not found or has no text content`);
+            }
+          } catch (recreateError) {
+            console.error(`[Chat API] ✗ Failed to recreate vector store:`, recreateError);
+          }
+        }
+        
+        // Now try to search
         try {
           relevantDocs = await searchSimilarDocuments(pdfId, question, 4);
           console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
@@ -91,10 +121,7 @@ export async function POST(req: NextRequest) {
 
         if (relevantDocs.length === 0) {
           console.warn(`[Chat API] No relevant documents found for PDF ${pdfId}`);
-          const hasVectorStore = getVectorStoreIds().includes(pdfId);
-          const errorMsg = hasVectorStore
-            ? "抱歉，我在文档中没有找到与您问题相关的内容。请尝试用不同的方式描述您的问题，或者检查文档是否包含相关信息。"
-            : "抱歉，文档尚未完成解析或解析失败。请等待文档解析完成后再试，或者重新上传文档。";
+          const errorMsg = "抱歉，无法找到文档内容。请尝试重新上传文档。";
 
           controller.enqueue(
             encoder.encode(

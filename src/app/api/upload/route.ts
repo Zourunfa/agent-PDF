@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
         uploadedAt: new Date().toISOString(),
         parseStatus: ParseStatus.PENDING,
         uploadTaskId: taskId,
+        tempPath, // 返回文件路径
       },
     });
   } catch (error) {
