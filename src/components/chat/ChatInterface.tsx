@@ -135,7 +135,7 @@ export function ChatInterface() {
         <Empty
           image={<MessageOutlined style={{ fontSize: 64, color: '#D1D5DB' }} />}
           description={
-            <Space direction="vertical" size={4}>
+            <Space orientation="vertical" size={4}>
               <span style={{ fontSize: 14, fontWeight: 500 }}>开始智能对话</span>
               <span style={{ fontSize: 12, color: '#9CA3AF' }}>上传并选择 PDF 文档</span>
             </Space>
@@ -184,13 +184,13 @@ export function ChatInterface() {
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
         {displayMessages.length === 0 ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Space direction="vertical" align="center" size={16}>
+            <Space orientation="vertical" align="center" size={16}>
               <BulbOutlined style={{ fontSize: 48, color: '#D1D5DB' }} />
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>开始提问</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF' }}>询问关于文档的任何问题</div>
               </div>
-              <Space direction="vertical" style={{ width: 300 }}>
+              <Space orientation="vertical" style={{ width: 300 }}>
                 {exampleQuestions.map((q, i) => (
                   <Card
                     key={i}
@@ -206,7 +206,7 @@ export function ChatInterface() {
             </Space>
           </div>
         ) : (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
             {displayMessages.map((msg, idx) => (
               <ChatMessage key={msg.id || `local-${idx}`} role={msg.role} content={msg.content} />
             ))}
@@ -238,9 +238,9 @@ export function ChatInterface() {
           </Button>
         </Space.Compact>
         <div style={{ marginTop: 8, fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
-          <Tag bordered={false} style={{ fontSize: 10 }}>Enter</Tag> 发送
+          <Tag variant="filled" style={{ fontSize: 10 }}>Enter</Tag> 发送
           <span style={{ margin: '0 8px' }}>·</span>
-          <Tag bordered={false} style={{ fontSize: 10 }}>Shift + Enter</Tag> 换行
+          <Tag variant="filled" style={{ fontSize: 10 }}>Shift + Enter</Tag> 换行
         </div>
       </div>
     </div>
