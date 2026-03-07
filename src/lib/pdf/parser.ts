@@ -23,28 +23,40 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
   try {
     console.log("[Parser] Parsing PDF with pdf2json...");
     console.log("[Parser] Buffer size:", buffer.length, "bytes");
+    console.log("[Parser] → Importing PDFParser...");
 
     // Dynamic import to avoid webpack issues
     const PDFParser = (await import("pdf2json")).default;
+    console.log("[Parser] ✓ PDFParser imported successfully");
+    console.log("[Parser] → Creating Promise wrapper...");
 
     return new Promise(async (resolve, reject) => {
+      console.log("[Parser] → Inside Promise executor");
+      
       // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         console.error("[Parser] ✗ PDF parsing timeout after 7 seconds");
         reject(new Error("PDF parsing timeout - file may be too complex or corrupted"));
       }, 7000);
+      console.log("[Parser] ✓ Timeout set (7s)");
 
+      console.log("[Parser] → Creating PDFParser instance...");
       const pdfParser = new PDFParser(null, true);
+      console.log("[Parser] ✓ PDFParser instance created");
 
+      console.log("[Parser] → Attaching event listeners...");
       pdfParser.on("pdfParser_dataError", (errData: any) => {
         clearTimeout(timeout);
+        console.error("[Parser] ✗ pdfParser_dataError event fired");
         console.error("[Parser] PDF parse error:", errData);
         reject(new Error(`PDF parse error: ${errData.parserError || errData}`));
       });
+      console.log("[Parser] ✓ dataError listener attached");
 
       pdfParser.on("pdfParser_dataReady", async (pdfData: any) => {
         clearTimeout(timeout);
         console.log("[Parser] ✓ pdfParser_dataReady event fired");
+        console.log("[Parser] → Processing PDF data...");
         try {
           let fullText = "";
           let pageCount = 0;
