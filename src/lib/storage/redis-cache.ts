@@ -160,8 +160,8 @@ export async function setVectorEmbeddings(
   try {
     const key = `${VECTOR_PREFIX}${pdfId}:embeddings`;
 
-    // Store embeddings with 7 day expiration
-    await redis.set(key, JSON.stringify(embeddings), { ex: 60 * 60 * 24 * 7 });
+    // @upstash/redis auto-serializes objects
+    await redis.set(key, embeddings, { ex: 60 * 60 * 24 * 7 });
 
     console.log(`[Redis] ✓ Stored ${embeddings.length} vector embeddings for ${pdfId}`);
   } catch (error) {
@@ -203,14 +203,15 @@ export async function getVectorEmbeddings(
 ): Promise<number[][] | null> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}:embeddings`;
-    const data = await redis.get<string>(key);
+    const data = await redis.get(key);
 
     if (!data) {
       console.log(`[Redis] Vector embeddings for ${pdfId} not found`);
       return null;
     }
 
-    const embeddings = JSON.parse(data);
+    // @upstash/redis auto-deserializes JSON
+    const embeddings = typeof data === 'string' ? JSON.parse(data) : data;
     console.log(`[Redis] ✓ Retrieved ${embeddings.length} vector embeddings for ${pdfId}`);
     return embeddings;
   } catch (error) {
