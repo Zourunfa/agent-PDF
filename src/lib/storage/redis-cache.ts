@@ -57,8 +57,8 @@ export async function setPDF(pdfId: string, pdf: PDFFile): Promise<void> {
       tempPath: pdf.tempPath,
     };
 
-    // Store PDF data with 7 day expiration
-    await redis.set(key, JSON.stringify(data), { ex: 60 * 60 * 24 * 7 });
+    // @upstash/redis auto-serializes objects
+    await redis.set(key, data, { ex: 60 * 60 * 24 * 7 });
 
     // Add to PDF list
     await redis.sadd(PDF_LIST_KEY, pdfId);
