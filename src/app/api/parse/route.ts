@@ -174,7 +174,15 @@ async function parsePDFAsyncInternal(pdfId: string) {
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
     const parseStartTime = Date.now();
     
-    const parseResult = await parsePDF(buffer);
+    // Wrap parsePDF in its own timeout to catch hanging
+    const parseWithTimeout = Promise.race([
+      parsePDF(buffer),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('PDF 解析超时 - pdf2json 未响应')), 3500)
+      )
+    ]);
+    
+    const parseResult = await parseWithTimeout;
     const parseTime = Date.now() - parseStartTime;
     console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
     
