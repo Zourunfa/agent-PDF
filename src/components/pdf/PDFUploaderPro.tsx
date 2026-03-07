@@ -4,7 +4,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Upload, message, Progress } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
@@ -17,24 +17,14 @@ import { createUserMessage, createAssistantMessage } from "@/lib/chat/conversati
 const { Dragger } = Upload;
 
 export function PDFUploaderPro() {
-  const { addPDF, setActivePdf, pdfs } = usePDF();
+  const { addPDF, setActivePdf, pdfs, updatePdfContent } = usePDF();
   const { addMessage, setActiveConversation, setStreaming } = useChat();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [lastUploadedPdfId, setLastUploadedPdfId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!lastUploadedPdfId) return;
-
-    const pdf = pdfs.get(lastUploadedPdfId);
-    if (pdf && pdf.parseStatus === ParseStatus.COMPLETED) {
-      setActivePdf(lastUploadedPdfId);
-      setTimeout(() => autoSummarize(lastUploadedPdfId), 500);
-      setLastUploadedPdfId(null);
-    }
-  }, [lastUploadedPdfId, pdfs, setActivePdf]);
-
-  const autoSummarize = async (pdfId: string) => {
+  // 自动总结函数
+  const autoSummarize = useCallback(async (pdfId: string) => {
     const conversationId = `conv-${pdfId}`;
     const question = "请详细总结这个文件的主要内容、关键信息和重点";
     
@@ -115,7 +105,60 @@ export function PDFUploaderPro() {
     } finally {
       setStreaming(false);
     }
-  };
+  }, [addMessage, setActiveConversation, setStreaming]);
+
+  // 使用ref来存储最新的回调函数，避免依赖问题
+  const autoSummarizeRef = useRef(autoSummarize);
+
+  // 更新ref
+  useEffect(() => {
+    autoSummarizeRef.current = autoSummarize;
+  }, [autoSummarize]);
+
+  useEffect(() => {
+    if (!lastUploadedPdfId) return;
+
+    // 轮询PDF解析状态
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/parse?pdfId=${lastUploadedPdfId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data.parseStatus === ParseStatus.COMPLETED) {
+            // 解析完成，清除轮询
+            clearInterval(pollInterval);
+
+            // 更新本地PDF状态
+            const pdf = pdfs.get(lastUploadedPdfId);
+            if (pdf) {
+              updatePdfContent(
+                lastUploadedPdfId,
+                result.data.textContent || "",
+                result.data.pageCount || 0
+              );
+            }
+
+            // 自动选中和总结
+            setActivePdf(lastUploadedPdfId);
+            setTimeout(() => {
+              autoSummarizeRef.current(lastUploadedPdfId);
+            }, 500);
+            setLastUploadedPdfId(null);
+          } else if (result.data && result.data.parseStatus === ParseStatus.FAILED) {
+            // 解析失败
+            clearInterval(pollInterval);
+            message.error("PDF解析失败");
+            setLastUploadedPdfId(null);
+          }
+        }
+      } catch (error) {
+        console.error("Poll error:", error);
+      }
+    }, 2000); // 每2秒轮询一次
+
+    // 清理函数：如果组件卸载或lastUploadedPdfId改变，清除轮询
+    return () => clearInterval(pollInterval);
+  }, [lastUploadedPdfId, pdfs, setActivePdf, updatePdfContent]);
 
   const uploadProps: UploadProps = {
     name: 'file',
