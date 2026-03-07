@@ -10,7 +10,10 @@
       "Bash(npm run:*)",
       "Bash(npm:*)",
       "Bash(curl:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(netstat -ano)",
+      "Bash(powershell:*)"
     ]
   }
 }

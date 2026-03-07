@@ -6,7 +6,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const TEMP_DIR = process.env.TEMP_DIR || "/tmp/pdf-chat";
+// Use relative path that works on both Windows and Linux
+const TEMP_DIR = path.join(process.cwd(), "tmp", "pdf-chat");
 
 /**
  * Ensure temp directory exists
@@ -20,12 +21,10 @@ export async function ensureTempDir(): Promise<void> {
 }
 
 /**
- * Generate unique file path
+ * Generate unique file path using pdfId
  */
-export function generateTempFileName(originalName: string): string {
-  const id = randomUUID();
-  const ext = path.extname(originalName);
-  return `${id}${ext}`;
+export function generateTempFileName(pdfId: string): string {
+  return `${pdfId}.pdf`;
 }
 
 /**

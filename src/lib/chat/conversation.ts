@@ -2,14 +2,28 @@
  * Conversation utilities
  */
 
-import { randomUUID } from "crypto";
 import { ChatMessage, MessageRole } from "@/types/chat";
+
+/**
+ * Generate a UUID (browser-compatible)
+ */
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 /**
  * Create a new conversation ID
  */
 export function createConversationId(): string {
-  return randomUUID();
+  return generateUUID();
 }
 
 /**
@@ -21,7 +35,7 @@ export function createUserMessage(
   content: string
 ): ChatMessage {
   return {
-    id: randomUUID(),
+    id: generateUUID(),
     conversationId,
     pdfId,
     role: MessageRole.USER,
@@ -42,7 +56,7 @@ export function createAssistantMessage(
   metadata?: ChatMessage["metadata"]
 ): ChatMessage {
   return {
-    id: randomUUID(),
+    id: generateUUID(),
     conversationId,
     pdfId,
     role: MessageRole.ASSISTANT,

@@ -53,6 +53,7 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
       if (result.success) {
         const { pdfId, fileName, fileSize, uploadedAt, parseStatus } = result.data;
 
+        // Add PDF to context
         addPDF({
           id: pdfId,
           fileName,
@@ -66,11 +67,20 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
           tempPath: null,
         });
 
-        fetch("/api/parse", {
+        // Trigger PDF parsing
+        console.log(`[Uploader] Triggering parse for PDF: ${pdfId}`);
+        const parseResponse = await fetch("/api/parse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pdfId }),
         });
+
+        const parseResult = await parseResponse.json();
+        console.log(`[Uploader] Parse response:`, parseResult);
+
+        if (!parseResult.success) {
+          console.error(`[Uploader] Parse failed:`, parseResult.error);
+        }
 
         setUploadProgress(100);
       } else {
@@ -120,75 +130,75 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
       <div
         className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
           isDragging
-            ? "border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/20 scale-[1.02]"
-            : "border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-gray-400 hover:shadow-md"
+            ? "border-cyan-400 bg-cyan-50/80 shadow-soft-lg scale-[1.01]"
+            : "border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-white hover:border-cyan-300 hover:shadow-soft"
         }`}
       >
         <div className="relative p-10">
-          {/* 上传图标 */}
-          <div className={`flex flex-col items-center justify-center space-y-4 transition-all duration-300 ${
+          {/* Upload Icon */}
+          <div className={`flex flex-col items-center justify-center space-y-5 transition-all duration-300 ${
             isUploading ? "opacity-50" : ""
           }`}>
-            <div className={`relative transition-transform duration-300 ${
+            <div className={`relative transition-all duration-300 ${
               isDragging ? "scale-110" : "hover:scale-105"
             }`}>
               {isUploading && uploadProgress === 100 ? (
-                <div className="flex items-center justify-center h-16 w-16 bg-green-100 rounded-2xl">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                <div className="flex items-center justify-center h-16 w-16 bg-emerald-100 rounded-2xl shadow-soft">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
                 </div>
               ) : (
-                <div className={`flex items-center justify-center h-16 w-16 rounded-2xl transition-colors ${
-                  isDragging 
-                    ? "bg-blue-500 shadow-lg shadow-blue-500/30" 
-                    : "bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/20"
+                <div className={`flex items-center justify-center h-16 w-16 rounded-2xl transition-all shadow-soft ${
+                  isDragging
+                    ? "bg-gradient-to-br from-cyan-500 to-blue-500 shadow-glow"
+                    : "bg-gradient-to-br from-blue-600 to-cyan-500"
                 }`}>
                   <Upload className="h-8 w-8 text-white" />
                 </div>
               )}
             </div>
 
-            {/* 文本 */}
+            {/* Text */}
             <div className="text-center space-y-2">
-              <p className="text-base font-semibold text-gray-900">
-                {isUploading 
-                  ? uploadProgress === 100 ? "上传成功！" : "上传中..." 
+              <p className="text-base font-semibold text-slate-900">
+                {isUploading
+                  ? uploadProgress === 100 ? "上传成功！" : "上传中..."
                   : isDragging ? "松开上传文件" : "上传 PDF 文档"}
               </p>
-              <p className="text-sm text-gray-500">
-                {isUploading 
-                  ? `处理中 ${uploadProgress}%` 
+              <p className="text-sm text-slate-500">
+                {isUploading
+                  ? `处理中 ${uploadProgress}%`
                   : "拖拽文件到这里，或点击选择文件"}
               </p>
             </div>
 
-            {/* 进度条 */}
+            {/* Progress Bar */}
             {isUploading && (
-              <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-64 h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300 ease-out rounded-full"
+                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300 ease-out rounded-full"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             )}
 
-            {/* 选择按钮 */}
+            {/* Select Button */}
             {!isUploading && (
-              <label className="relative inline-block cursor-pointer">
+              <label className="relative inline-block cursor-pointer group">
                 <input
                   type="file"
                   accept="application/pdf"
                   className="hidden"
                   onChange={handleFileInput}
                 />
-                <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-200 hover:scale-105">
+                <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-soft hover:shadow-soft-lg hover:scale-105 transition-all duration-200">
                   <FileText className="h-4 w-4" />
                   选择文件
                 </span>
               </label>
             )}
 
-            {/* 提示 */}
-            <p className="text-xs text-gray-400">
+            {/* Hint */}
+            <p className="text-xs text-slate-400">
               支持 PDF 格式 · 最大 10MB
             </p>
           </div>
