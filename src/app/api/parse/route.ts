@@ -157,6 +157,24 @@ async function parsePDFAsync(pdfId: string) {
       progress: 100,
     });
 
+    // Update PDF file storage with parsed content
+    console.log(`[Parse API] Updating PDF file storage with parsed content...`);
+    try {
+      const { getPDFFile, addPDFFile } = await import("@/lib/storage/pdf-files");
+      const pdfFile = await getPDFFile(pdfId);
+      if (pdfFile) {
+        pdfFile.textContent = text;
+        pdfFile.pageCount = pages;
+        pdfFile.parseStatus = ParseStatus.COMPLETED;
+        await addPDFFile(pdfFile);
+        console.log(`[Parse API] ✓ PDF file storage updated and persisted`);
+      } else {
+        console.error(`[Parse API] ✗ PDF file not found in storage`);
+      }
+    } catch (storageError) {
+      console.error(`[Parse API] ✗ Failed to update PDF file storage:`, storageError);
+    }
+
     // Split into chunks and create vector store
     console.log(`[Parse API] Splitting text into chunks...`);
     const chunks = await splitTextWithMetadata(
