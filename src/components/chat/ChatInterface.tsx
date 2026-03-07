@@ -1,17 +1,16 @@
 /**
- * Chat Interface Component - 极简艺术风格
+ * Chat Interface Component - 现代设计
  */
 
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MessageSquare, Sparkles } from "lucide-react";
+import { Send, MessageSquare, Sparkles, Loader2 } from "lucide-react";
 import { useChat } from "@/contexts/ChatContext";
 import { usePDF } from "@/contexts/PDFContext";
 import { createUserMessage, createAssistantMessage } from "@/lib/chat/conversation";
 import { MessageRole } from "@/types/chat";
 import { ChatMessage } from "./ChatMessage";
-import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface ChatInterfaceProps {
   className?: string;
@@ -26,7 +25,6 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
     addMessage,
     setActiveConversation,
     setStreaming,
-    updateStreamingMessage,
   } = useChat();
 
   const [input, setInput] = useState("");
@@ -42,7 +40,6 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
     ? conversations.get(activeConversationId) || []
     : [];
 
-  // Get conversation ID for active PDF
   const conversationId = activePdfId ? `conv-${activePdfId}` : null;
 
   useEffect(() => {
@@ -126,7 +123,7 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
                   assistantMessage = `错误: ${data.error?.message || "未知错误"}`;
                 }
               } catch (e) {
-                // Ignore JSON parse errors for incomplete chunks
+                // Ignore
               }
             }
           }
@@ -144,7 +141,6 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
       ]);
     } finally {
       setStreaming(false);
-      // Focus input after completion
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [
@@ -167,15 +163,15 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
   if (!activePdfId) {
     return (
       <div className={`flex h-full flex-col items-center justify-center ${className}`}>
-        <div className="relative text-center">
-          <div className="absolute inset-0 flex items-center justify-center blur-xl">
-            <MessageSquare className="h-20 w-20 text-foreground/5" />
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center h-20 w-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mx-auto">
+            <MessageSquare className="h-10 w-10 text-blue-600" />
           </div>
-          <MessageSquare className="relative h-12 w-12 text-foreground/20 mx-auto mb-4" />
+          <div>
+            <p className="text-base font-medium text-gray-900 mb-1">开始对话</p>
+            <p className="text-sm text-gray-500">上传并选择 PDF 后开始智能对话</p>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground/70 max-w-[200px]">
-          上传并选择 PDF 后开始对话
-        </p>
       </div>
     );
   }
@@ -185,24 +181,21 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
   return (
     <div className={`flex h-full flex-col ${className}`}>
       {/* Messages Area */}
-      <div className="flex-1 overflow-auto px-6 py-5 scrollbar-thin">
+      <div className="flex-1 overflow-auto px-6 py-6">
         {displayMessages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="relative text-center">
-              <div className="absolute inset-0 flex items-center justify-center blur-xl">
-                <Sparkles className="h-16 w-16 text-accent/10" />
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center h-16 w-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mx-auto">
+                <Sparkles className="h-8 w-8 text-blue-600" />
               </div>
-              <Sparkles className="relative h-8 w-8 text-accent/40 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground/60">
-                开始提问...
-              </p>
-              <p className="text-xs text-muted-foreground/40 mt-1">
-                关于文档的任何问题
-              </p>
+              <div>
+                <p className="text-base font-medium text-gray-900 mb-1">开始提问</p>
+                <p className="text-sm text-gray-500">询问关于文档的任何问题</p>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto space-y-5">
+          <div className="max-w-3xl mx-auto space-y-6">
             {displayMessages.map((msg, idx) => (
               <ChatMessage
                 key={msg.id || `local-${idx}`}
@@ -215,17 +208,11 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
         )}
       </div>
 
-      {/* Input Area - 极简设计 */}
-      <div className="border-t border-border/30 bg-background/50 backdrop-blur-sm px-6 py-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="relative group">
-            <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
-              isStreaming
-                ? "bg-muted/50"
-                : "bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100"
-            }`} />
-
-            <div className="relative flex items-center gap-3 bg-background border border-border/40 rounded-2xl px-4 py-3 transition-all duration-200 hover:border-border/60 focus-within:border-accent/50 focus-within:shadow-sm">
+      {/* Input Area */}
+      <div className="border-t border-gray-200 bg-white/80 backdrop-blur-xl px-6 py-5">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative">
+            <div className="flex items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl px-5 py-3.5 transition-all duration-200 focus-within:border-blue-500 focus-within:shadow-lg focus-within:shadow-blue-500/10">
               <input
                 ref={inputRef}
                 type="text"
@@ -234,26 +221,23 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
                 onKeyDown={handleKeyDown}
                 placeholder="输入您的问题..."
                 disabled={isStreaming}
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none disabled:opacity-50"
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none disabled:opacity-50"
               />
 
               {isStreaming && (
-                <div className="flex items-center gap-1.5 pr-2">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inset-0 animate-ping rounded-full bg-accent opacity-40" />
-                    <span className="relative inset-0 rounded-full bg-accent" />
-                  </span>
-                  <span className="text-xs text-muted-foreground/50">思考中</span>
+                <div className="flex items-center gap-2 pr-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="text-xs text-gray-500">思考中...</span>
                 </div>
               )}
 
               <button
                 onClick={handleSubmit}
                 disabled={!input.trim() || isStreaming}
-                className={`flex-shrink-0 rounded-xl p-2 transition-all duration-200 ${
+                className={`flex-shrink-0 rounded-xl p-2.5 transition-all duration-200 ${
                   input.trim() && !isStreaming
-                    ? "bg-foreground text-background hover:bg-foreground/90 hover:shadow-md"
-                    : "bg-muted text-muted-foreground/40 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
                 }`}
                 title={input.trim() && !isStreaming ? "发送消息" : "输入消息后发送"}
               >
@@ -261,12 +245,9 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
               </button>
             </div>
 
-            {/* Helper text */}
-            <div className="absolute -bottom-5 left-0 right-0 text-center">
-              <p className="text-[10px] text-muted-foreground/30">
-                按 Enter 发送，Shift + Enter 换行
-              </p>
-            </div>
+            <p className="text-xs text-gray-400 text-center mt-3">
+              按 Enter 发送 · Shift + Enter 换行
+            </p>
           </div>
         </div>
       </div>
