@@ -1,5 +1,5 @@
 /**
- * Chat Message Component - 极简艺术风格
+ * Chat Message Component - 现代设计
  */
 
 "use client";
@@ -22,38 +22,43 @@ export function ChatMessage({ role, content, className = "" }: ChatMessageProps)
   return (
     <div
       className={cn(
-        "group flex gap-3.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300",
+        "group flex gap-4 animate-fade-in",
         isUser ? "flex-row-reverse" : "",
         className
       )}
     >
-      {/* Avatar - 极简圆形设计 */}
+      {/* Avatar */}
       <div
         className={cn(
-          "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200",
+          "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-all duration-200",
           isUser
-            ? "bg-foreground text-background shadow-sm"
-            : "bg-secondary/80 text-foreground/60"
+            ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30"
+            : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700"
         )}
       >
         {isUser ? (
-          <User className="h-3.5 w-3.5" />
+          <User className="h-4 w-4" />
         ) : (
-          <Bot className="h-3.5 w-3.5" />
+          <Bot className="h-4 w-4" />
         )}
       </div>
 
-      {/* Message Bubble - 柔和的极简设计 */}
+      {/* Message Bubble */}
       <div className={cn(
-        "flex flex-col max-w-[75%]",
+        "flex flex-col max-w-[80%]",
         isUser ? "items-end" : "items-start"
       )}>
+        {/* Role Label */}
+        <span className="text-xs font-medium text-gray-500 mb-1.5 px-1">
+          {isUser ? "你" : "AI 助手"}
+        </span>
+
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 transition-all duration-200",
+            "rounded-2xl px-5 py-3.5 transition-all duration-200",
             isUser
-              ? "bg-foreground text-background shadow-sm"
-              : "bg-secondary/60 text-foreground/80 backdrop-blur-sm"
+              ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+              : "bg-white text-gray-900 shadow-md border border-gray-100"
           )}
         >
           {isUser ? (
@@ -61,18 +66,11 @@ export function ChatMessage({ role, content, className = "" }: ChatMessageProps)
               {content}
             </p>
           ) : (
-            <div className="text-sm leading-relaxed text-foreground/80">
+            <div className="text-sm leading-relaxed prose prose-sm max-w-none">
               <MarkdownRenderer content={content} />
             </div>
           )}
         </div>
-
-        {/* Metadata indicator (subtle) */}
-        {isUser && (
-          <span className="mt-1 text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
-            你
-          </span>
-        )}
       </div>
     </div>
   );

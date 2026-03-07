@@ -15,7 +15,6 @@ interface PDFViewerProps {
 
 export function PDFViewer({ className = "" }: PDFViewerProps) {
   const { activePdfId, pdfs } = usePDF();
-
   const activePdf = activePdfId ? pdfs.get(activePdfId) : null;
 
   if (!activePdf) {

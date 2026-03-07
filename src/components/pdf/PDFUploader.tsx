@@ -1,11 +1,11 @@
 /**
- * PDF Uploader Component - 极简艺术风格
+ * PDF Uploader Component - 现代设计
  */
 
 "use client";
 
 import React, { useCallback, useState } from "react";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, CheckCircle2 } from "lucide-react";
 import { usePDF } from "@/contexts/PDFContext";
 import { validatePDFFile } from "@/lib/utils/validation";
 
@@ -29,7 +29,6 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
     setIsUploading(true);
     setUploadProgress(0);
 
-    // 模拟上传进度
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 90) {
@@ -67,7 +66,6 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
           tempPath: null,
         });
 
-        // Trigger parsing
         fetch("/api/parse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -111,7 +109,7 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
 
   return (
     <div
-      className={`relative group ${className}`}
+      className={`relative ${className}`}
       onDragOver={(e) => {
         e.preventDefault();
         setIsDragging(true);
@@ -120,73 +118,80 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
       onDrop={handleDrop}
     >
       <div
-        className={`relative overflow-hidden rounded-2xl border border-dashed border-border/40 bg-secondary/20 p-8 transition-all duration-300 ${
+        className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
           isDragging
-            ? "border-accent bg-accent/5 scale-[1.02]"
-            : "hover:border-border/60 hover:bg-secondary/30"
+            ? "border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/20 scale-[1.02]"
+            : "border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-gray-400 hover:shadow-md"
         }`}
       >
-        {/* 装饰性元素 */}
-        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-accent/20 to-transparent" />
-        <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-accent/20 to-transparent" />
-
-        {/* 上传区域 */}
-        <div className="relative flex flex-col items-center justify-center space-y-4">
-          {/* 图标容器 */}
-          <div className={`relative transition-all duration-300 ${
-            isUploading ? "scale-90 opacity-50" : "group-hover:scale-110"
+        <div className="relative p-10">
+          {/* 上传图标 */}
+          <div className={`flex flex-col items-center justify-center space-y-4 transition-all duration-300 ${
+            isUploading ? "opacity-50" : ""
           }`}>
-            <div className={`absolute inset-0 rounded-full bg-accent/10 blur-xl transition-opacity ${
-              isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`} />
-            <Upload className={`relative h-12 w-12 text-foreground/60 transition-colors ${
-              isDragging ? "text-accent" : ""
-            }`} />
-          </div>
-
-          {/* 文本 */}
-          <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-foreground/80">
-              {isUploading ? "上传中..." : "上传 PDF 文档"}
-            </p>
-            <p className="text-xs text-muted-foreground/50">
-              {isUploading ? `处理中... ${uploadProgress}%` : "拖拽文件到这里，或点击选择"}
-            </p>
-          </div>
-
-          {/* 进度条 */}
-          {isUploading && (
-            <div className="w-48 h-1 bg-secondary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all duration-300 ease-out"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          )}
-
-          {/* 选择按钮 */}
-          <label className="relative inline-block">
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleFileInput}
-              disabled={isUploading}
-            />
-            <span className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-              isUploading
-                ? "bg-muted cursor-not-allowed opacity-50"
-                : "bg-foreground text-background hover:bg-foreground/90 cursor-pointer hover:shadow-lg"
+            <div className={`relative transition-transform duration-300 ${
+              isDragging ? "scale-110" : "hover:scale-105"
             }`}>
-              <FileText className="h-4 w-4" />
-              {isUploading ? "处理中" : "选择文件"}
-            </span>
-          </label>
+              {isUploading && uploadProgress === 100 ? (
+                <div className="flex items-center justify-center h-16 w-16 bg-green-100 rounded-2xl">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
+              ) : (
+                <div className={`flex items-center justify-center h-16 w-16 rounded-2xl transition-colors ${
+                  isDragging 
+                    ? "bg-blue-500 shadow-lg shadow-blue-500/30" 
+                    : "bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/20"
+                }`}>
+                  <Upload className="h-8 w-8 text-white" />
+                </div>
+              )}
+            </div>
 
-          {/* 提示 */}
-          <p className="text-[10px] text-muted-foreground/40">
-            支持 PDF 格式，最大 10MB
-          </p>
+            {/* 文本 */}
+            <div className="text-center space-y-2">
+              <p className="text-base font-semibold text-gray-900">
+                {isUploading 
+                  ? uploadProgress === 100 ? "上传成功！" : "上传中..." 
+                  : isDragging ? "松开上传文件" : "上传 PDF 文档"}
+              </p>
+              <p className="text-sm text-gray-500">
+                {isUploading 
+                  ? `处理中 ${uploadProgress}%` 
+                  : "拖拽文件到这里，或点击选择文件"}
+              </p>
+            </div>
+
+            {/* 进度条 */}
+            {isUploading && (
+              <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
+
+            {/* 选择按钮 */}
+            {!isUploading && (
+              <label className="relative inline-block cursor-pointer">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleFileInput}
+                />
+                <span className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-200 hover:scale-105">
+                  <FileText className="h-4 w-4" />
+                  选择文件
+                </span>
+              </label>
+            )}
+
+            {/* 提示 */}
+            <p className="text-xs text-gray-400">
+              支持 PDF 格式 · 最大 10MB
+            </p>
+          </div>
         </div>
       </div>
     </div>
