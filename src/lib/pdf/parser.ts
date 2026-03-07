@@ -10,9 +10,10 @@ export interface ParsedPDF {
 
 /**
  * Parse PDF using multiple parsers with fallback
- * 1. Try pdfjs-dist (most reliable)
- * 2. Fallback to pdf2json
- * 3. Fallback to OCR for scanned documents
+ * 1. Try pdf-lib (lightweight, no worker issues)
+ * 2. Try pdfjs-dist (most reliable for complex PDFs)
+ * 3. Fallback to pdf2json
+ * 4. Fallback to OCR for scanned documents
  */
 export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise<ParsedPDF> {
   // If OCR is explicitly requested, use it directly
@@ -22,7 +23,25 @@ export async function parsePDF(buffer: Buffer, useOCR: boolean = false): Promise
     return parseScannedPDF(buffer);
   }
 
-  // Try pdfjs-dist first (most reliable)
+  // Try pdf-lib first (lightweight, no worker issues)
+  try {
+    console.log("[Parser] Attempting pdf-lib parser...");
+    const { parsePDFWithPDFLib } = await import("./pdflib-parser");
+    const result = await parsePDFWithPDFLib(buffer);
+    
+    // Check if text is valid
+    if (result.text.length >= 50) {
+      console.log("[Parser] ✓ pdf-lib parsing successful");
+      return result;
+    }
+    
+    console.warn("[Parser] ⚠️ pdf-lib returned insufficient text, trying PDF.js...");
+  } catch (pdflibError) {
+    console.error("[Parser] pdf-lib failed:", pdflibError);
+    console.log("[Parser] → Falling back to PDF.js...");
+  }
+
+  // Try pdfjs-dist second (most reliable for complex PDFs)
   try {
     console.log("[Parser] Attempting PDF.js parser...");
     const { parsePDFWithPDFJS } = await import("./pdfjs-parser");
