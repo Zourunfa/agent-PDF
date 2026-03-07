@@ -127,6 +127,26 @@ export async function setVectorChunks(
 }
 
 /**
+ * Store vector embeddings in Redis
+ */
+export async function setVectorEmbeddings(
+  pdfId: string,
+  embeddings: number[][]
+): Promise<void> {
+  try {
+    const key = `${VECTOR_PREFIX}${pdfId}:embeddings`;
+
+    // Store embeddings with 7 day expiration
+    await redis.set(key, JSON.stringify(embeddings), { ex: 60 * 60 * 24 * 7 });
+
+    console.log(`[Redis] ✓ Stored ${embeddings.length} vector embeddings for ${pdfId}`);
+  } catch (error) {
+    console.error(`[Redis] ✗ Failed to store vector embeddings for ${pdfId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Get vector chunks from Redis
  */
 export async function getVectorChunks(
@@ -151,13 +171,38 @@ export async function getVectorChunks(
 }
 
 /**
+ * Get vector embeddings from Redis
+ */
+export async function getVectorEmbeddings(
+  pdfId: string
+): Promise<number[][] | null> {
+  try {
+    const key = `${VECTOR_PREFIX}${pdfId}:embeddings`;
+    const data = await redis.get<string>(key);
+
+    if (!data) {
+      console.log(`[Redis] Vector embeddings for ${pdfId} not found`);
+      return null;
+    }
+
+    const embeddings = JSON.parse(data);
+    console.log(`[Redis] ✓ Retrieved ${embeddings.length} vector embeddings for ${pdfId}`);
+    return embeddings;
+  } catch (error) {
+    console.error(`[Redis] ✗ Failed to get vector embeddings for ${pdfId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Delete vector chunks from Redis
  */
 export async function deleteVectorChunks(pdfId: string): Promise<void> {
   try {
     const key = `${VECTOR_PREFIX}${pdfId}`;
-    await redis.del(key);
-    console.log(`[Redis] ✓ Deleted vector chunks for ${pdfId}`);
+    const embeddingsKey = `${VECTOR_PREFIX}${pdfId}:embeddings`;
+    await redis.del(key, embeddingsKey);
+    console.log(`[Redis] ✓ Deleted vector chunks and embeddings for ${pdfId}`);
   } catch (error) {
     console.error(`[Redis] ✗ Failed to delete vector chunks for ${pdfId}:`, error);
   }

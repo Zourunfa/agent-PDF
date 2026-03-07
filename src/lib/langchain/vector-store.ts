@@ -5,6 +5,13 @@
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { Document } from "@langchain/core/documents";
 import { embeddings } from "./config";
+import { getEmbeddings } from "./config";
+
+// Type for vector store data with embeddings
+interface VectorStoreData {
+  documents: Document[];
+  embeddings: number[][];
+}
 
 /**
  * Global singleton for vector store cache
@@ -48,7 +55,8 @@ export async function getVectorStore(pdfId: string): Promise<MemoryVectorStore |
  */
 export async function createVectorStore(
   pdfId: string,
-  documents: Document[]
+  documents: Document[],
+  storeEmbeddings = false
 ): Promise<MemoryVectorStore> {
   const cache = getVectorStoreCache();
   console.log(`[VectorStore] Creating vector store for ${pdfId} with ${documents.length} documents`);
@@ -56,6 +64,22 @@ export async function createVectorStore(
   cache.set(pdfId, vectorStore);
   console.log(`[VectorStore] Vector store created successfully for ${pdfId}`);
   console.log(`[VectorStore] Cache now has ${cache.size} stores:`, Array.from(cache.keys()));
+
+  // Store embeddings in Redis if requested
+  if (storeEmbeddings) {
+    try {
+      const embeddingModel = getEmbeddings();
+      const texts = documents.map(doc => doc.pageContent);
+      const embeddingVectors = await embeddingModel.embedDocuments(texts);
+
+      const { setVectorEmbeddings } = await import('@/lib/storage/redis-cache');
+      await setVectorEmbeddings(pdfId, embeddingVectors);
+      console.log(`[VectorStore] ✓ Stored ${embeddingVectors.length} embeddings in Redis for ${pdfId}`);
+    } catch (error) {
+      console.log(`[VectorStore] Failed to store embeddings in Redis:`, error);
+    }
+  }
+
   return vectorStore;
 }
 
@@ -72,14 +96,6 @@ export async function createVectorStoreFromChunks(
     qwen: !!process.env.QWEN_API_KEY,
   });
 
-  // Store chunks in Redis for persistence (for Vercel serverless)
-  try {
-    const { setVectorChunks } = await import('@/lib/storage/redis-cache');
-    await setVectorChunks(pdfId, chunks);
-  } catch (redisError) {
-    console.log(`[VectorStore] Redis not available, using in-memory only`);
-  }
-
   const documents = chunks.map(
     (chunk) =>
       new Document({
@@ -89,8 +105,18 @@ export async function createVectorStoreFromChunks(
   );
 
   try {
-    const vectorStore = await createVectorStore(pdfId, documents);
+    // Store chunks in Redis for persistence
+    try {
+      const { setVectorChunks } = await import('@/lib/storage/redis-cache');
+      await setVectorChunks(pdfId, chunks);
+    } catch (redisError) {
+      console.log(`[VectorStore] Redis not available for chunks, using in-memory only`);
+    }
+
+    // Create vector store with embeddings storage enabled
+    const vectorStore = await createVectorStore(pdfId, documents, true);
     console.log(`[VectorStore] ✓ Successfully created and cached vector store`);
+
     return vectorStore;
   } catch (error) {
     console.error(`[VectorStore] ✗ Failed to create vector store:`, error);
@@ -120,11 +146,11 @@ export async function searchSimilarDocuments(
   if (!vectorStore) {
     console.log(`[VectorStore] Vector store not in memory, checking Redis...`);
     try {
-      const { getVectorChunks } = await import('@/lib/storage/redis-cache');
+      const { getVectorChunks, getVectorEmbeddings } = await import('@/lib/storage/redis-cache');
       const chunks = await getVectorChunks(pdfId);
+      const storedEmbeddings = await getVectorEmbeddings(pdfId);
 
       if (chunks && chunks.length > 0) {
-        console.log(`[VectorStore] ✓ Found ${chunks.length} chunks in Redis, recreating vector store...`);
         const documents = chunks.map(
           (chunk) =>
             new Document({
@@ -132,11 +158,23 @@ export async function searchSimilarDocuments(
               metadata: chunk.metadata,
             })
         );
-        vectorStore = await createVectorStore(pdfId, documents);
-        console.log(`[VectorStore] ✓ Vector store restored from Redis`);
+
+        // Check if we have stored embeddings
+        if (storedEmbeddings && storedEmbeddings.length === chunks.length) {
+          console.log(`[VectorStore] ✓ Found ${storedEmbeddings.length} stored embeddings, restoring vector store without recomputing...`);
+          // Create new vector store and add vectors
+          vectorStore = new MemoryVectorStore(embeddings);
+          await vectorStore.addVectors(storedEmbeddings, documents);
+          getVectorStoreCache().set(pdfId, vectorStore);
+          console.log(`[VectorStore] ✓ Vector store restored from Redis with stored embeddings`);
+        } else {
+          console.log(`[VectorStore] ✓ Found ${chunks.length} chunks in Redis, recreating vector store (will recompute embeddings)...`);
+          vectorStore = await createVectorStore(pdfId, documents);
+          console.log(`[VectorStore] ✓ Vector store restored from Redis`);
+        }
       }
     } catch (redisError) {
-      console.log(`[VectorStore] Redis not available or no chunks found`);
+      console.log(`[VectorStore] Redis not available or no chunks found:`, redisError);
     }
   }
 
