@@ -3,7 +3,7 @@
  */
 
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { Document } from "langchain/document";
+import { Document } from "@langchain/core/documents";
 import { embeddings } from "./config";
 
 /**
