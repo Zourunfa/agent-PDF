@@ -99,9 +99,19 @@ export function PDFUploaderPro() {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Auto-summarize error:", error);
-      message.error("自动总结失败，请手动提问");
+
+      // 检查是否是AI配置错误
+      const errorCode = error?.code || error?.error?.code;
+      if (errorCode === "AI_NOT_CONFIGURED") {
+        message.warning({
+          content: "AI服务未配置，请设置环境变量 ALIBABA_API_KEY 或 QWEN_API_KEY",
+          duration: 5,
+        });
+      } else {
+        message.error("自动总结失败，请手动提问");
+      }
     } finally {
       setStreaming(false);
     }
@@ -141,7 +151,7 @@ export function PDFUploaderPro() {
         const result = await response.json();
 
         if (result.success) {
-          const { pdfId, fileName, fileSize, uploadedAt, parseStatus } = result.data;
+          const { pdfId, fileName, fileSize, uploadedAt, parseStatus, tempPath } = result.data;
           const validation = validatePDFFile(file as File);
 
           addPDF({
@@ -154,7 +164,7 @@ export function PDFUploaderPro() {
             parseStatus,
             textContent: null,
             pageCount: null,
-            tempPath: null,
+            tempPath, // 使用API返回的文件路径
           });
 
           await fetch("/api/parse", {

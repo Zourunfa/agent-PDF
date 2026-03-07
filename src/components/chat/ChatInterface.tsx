@@ -104,7 +104,26 @@ export function ChatInterface() {
                   addMessage(conversationId!, aiMessage);
                   setLocalMessages([]);
                 } else if (data.type === "error") {
-                  assistantMessage = `错误: ${data.error?.message || "未知错误"}`;
+                  const errorCode = data.error?.code;
+                  const errorMessage = data.error?.message || "未知错误";
+
+                  // 特殊处理AI配置错误
+                  if (errorCode === "AI_NOT_CONFIGURED") {
+                    assistantMessage = `⚠️ **AI服务未配置**
+
+请配置以下环境变量之一：
+- \`ALIBABA_API_KEY\` - 通义千问API密钥
+- \`QWEN_API_KEY\` - 千问API密钥
+
+配置方法：
+1. 创建 \`.env.local\` 文件
+2. 添加：\`ALIBABA_API_KEY=your_api_key_here\`
+3. 重启开发服务器
+
+获取API密钥：https://dashscope.aliyun.com`;
+                  } else {
+                    assistantMessage = `❌ **错误**\n\n${errorMessage}`;
+                  }
                   setLocalMessages([{ id: tempAssistantId, role: MessageRole.ASSISTANT, content: assistantMessage }]);
                 }
               } catch (e) {}
