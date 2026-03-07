@@ -126,11 +126,14 @@ async function parsePDFAsync(pdfId: string) {
     }
 
     // Parse PDF
+    console.log(`[Parse API] → Reading file buffer...`);
     const buffer = await fs.readFile(filePath);
     console.log(`[Parse API] ✓ PDF file size: ${buffer.length} bytes`);
+    console.log(`[Parse API] ✓ Buffer is valid: ${Buffer.isBuffer(buffer)}`);
 
     console.log(`[Parse API] ========== STARTING PDF PARSE ==========`);
     const parseStartTime = Date.now();
+    console.log(`[Parse API] → Calling parsePDF function...`);
     
     let parseResult;
     try {
@@ -139,6 +142,8 @@ async function parsePDFAsync(pdfId: string) {
       console.log(`[Parse API] Starting parse with ${parseTimeout}ms timeout...`);
       
       const parsePromise = parsePDF(buffer);
+      console.log(`[Parse API] → parsePDF promise created`);
+      
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => {
           console.error(`[Parse API] ✗ Parse timeout after ${parseTimeout}ms`);
@@ -146,6 +151,7 @@ async function parsePDFAsync(pdfId: string) {
         }, parseTimeout)
       );
       
+      console.log(`[Parse API] → Waiting for Promise.race...`);
       parseResult = await Promise.race([parsePromise, timeoutPromise]) as any;
       const parseTime = Date.now() - parseStartTime;
       console.log(`[Parse API] ========== PDF PARSE COMPLETED in ${parseTime}ms ==========`);
