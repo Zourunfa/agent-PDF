@@ -3,12 +3,18 @@
  */
 
 import { NextRequest } from "next/server";
-import { chatModel } from "@/lib/langchain/config";
-import { searchSimilarDocuments, getVectorStoreIds } from "@/lib/langchain/vector-store";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { Document as LangChainDocument } from "@langchain/core/documents";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
+  // Lazy load LangChain config to avoid build-time execution
+  const { chatModel } = await import("@/lib/langchain/config");
+  const { searchSimilarDocuments, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
+  
   const { pdfId, question, conversationId, history } = await req.json();
 
   console.log(`[Chat API] Received chat request for PDF: ${pdfId}, question: "${question}"`);
