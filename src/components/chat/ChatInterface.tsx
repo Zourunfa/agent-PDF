@@ -172,7 +172,7 @@ export function ChatInterface() {
 
   const displayMessages = [...messages, ...localMessages];
   const exampleQuestions = [
-    "这份文档的主要内容是什么？",
+    "详细分析下文档？",
     "帮我总结一下关键要点",
     "文档中提到了哪些重要数据？"
   ];
