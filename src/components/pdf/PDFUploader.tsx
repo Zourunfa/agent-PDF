@@ -217,7 +217,7 @@ export function PDFUploader({ className = "" }: PDFUploaderProps) {
             {/* Hint */}
             <div className="flex items-center gap-2 text-[10px] text-cyan-400/40">
               <Sparkles className="h-3 w-3" />
-              <span>支持 PDF 格式 · 最大 10MB · 自动 OCR</span>
+              <span>支持 PDF 格式 · 最大 1MB · 自动 OCR</span>
             </div>
           </div>
         </div>

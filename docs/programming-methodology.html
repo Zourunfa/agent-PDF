@@ -797,6 +797,556 @@
             text-decoration: none;
         }
 
+        /* Spec-Kit Styles */
+        .intro-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .intro-card h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .speckit-step {
+            text-align: center;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 140px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .speckit-step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .speckit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .speckit-label {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .speckit-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .speckit-cmd {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-dark);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+
+        .step-detail {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .command-box {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin: 25px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .command-box code {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .command-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .code-example {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .code-example pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .code-example code {
+            color: var(--accent);
+        }
+
+        .tip-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .tip-box strong {
+            color: var(--success);
+        }
+
+        .tip-box ul {
+            margin-top: 10px;
+        }
+
+        .tip-box li {
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .checklist-box {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            color: var(--text-secondary);
+        }
+
+        .checklist-icon {
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .phase-flow {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .phase-flow-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .phase-number {
+            background: var(--primary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .phase-content {
+            flex: 1;
+        }
+
+        .output-file {
+            display: inline-block;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-top: 8px;
+        }
+
+        .output-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .doc-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+        }
+
+        .doc-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .doc-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .doc-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .task-structure {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .task-phase {
+            background: var(--bg-card);
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .task-phase:last-child {
+            margin-bottom: 0;
+        }
+
+        .task-phase-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .task-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .task-tag {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+        }
+
+        .checkpoint {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%);
+            border: 1px solid var(--warning);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 12px;
+            font-weight: 500;
+        }
+
+        .format-box {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .format-box code {
+            background: var(--primary);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .delivery-strategy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .delivery-step {
+            text-align: center;
+            background: var(--bg-dark);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 150px;
+        }
+
+        .delivery-number {
+            background: var(--success);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 auto 10px;
+        }
+
+        .delivery-text strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .implement-flow {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .implement-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .implement-step:last-child {
+            border-bottom: none;
+        }
+
+        .implement-badge {
+            background: var(--primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .implement-content {
+            flex: 1;
+        }
+
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .principle-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .principle-card.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .principle-card.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .principle-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .principle-icon {
+            font-size: 1.2rem;
+        }
+
+        .principle-card.success .principle-icon {
+            color: var(--success);
+        }
+
+        .principle-card.warning .principle-icon {
+            color: var(--warning);
+        }
+
+        .milestone-timeline {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .milestone {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px 0;
+            position: relative;
+        }
+
+        .milestone:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 30px;
+            width: 2px;
+            height: calc(100% - 30px);
+            background: var(--border);
+        }
+
+        .milestone-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        .milestone-content {
+            flex: 1;
+        }
+
+        .milestone-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .milestone-status {
+            display: inline-block;
+            background: var(--success);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+
+        .example-flow {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .example-step {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            transition: border-color 0.3s ease;
+        }
+
+        .example-step:hover {
+            border-color: var(--primary);
+        }
+
+        .example-time {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .example-content code {
+            background: var(--bg-dark);
+            color: var(--accent);
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .value-item {
+            text-align: center;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .value-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .value-item strong {
+            display: block;
+            margin: 10px 0 5px;
+            color: var(--text-primary);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
@@ -825,6 +1375,7 @@
             <a class="nav-item" href="#cost">成本分析</a>
             <a class="nav-item" href="#quality">代码质量</a>
             <a class="nav-item" href="#mixed">混合方法</a>
+            <a class="nav-item" href="#speckit">Spec-Kit 实践</a>
         </nav>
 
         <!-- 核心对比 -->
@@ -1712,8 +2263,661 @@
             </div>
         </section>
 
+        <!-- Spec-Kit 实践 -->
+        <section id="speckit">
+            <h2>Spec-Kit 编程详细步骤</h2>
+
+            <div class="intro-card">
+                <h3>什么是 Spec-Kit？</h3>
+                <p style="color: var(--text-secondary); line-height: 1.8;">
+                    Spec-Kit 是一套规范驱动开发（Spec-Driven Development）的工具和方法论，通过结构化的工作流程，
+                    将模糊的业务需求转化为可执行的技术规范，最终生成高质量的代码。它让 Spec Coding 变得简单、可追溯、可协作。
+                </p>
+            </div>
+
+            <div class="thinking-diagram">
+                <h3>Spec-Kit 工作流程概览</h3>
+                <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; margin: 40px 0;">
+                    <div class="speckit-step">
+                        <div class="speckit-icon">📜</div>
+                        <div class="speckit-label">Constitution</div>
+                        <div class="speckit-desc">项目宪法</div>
+                        <div class="speckit-cmd">/speckit.constitution</div>
+                    </div>
+                    <span style="color: var(--accent); font-size: 2rem;">→</span>
+                    <div class="speckit-step">
+                        <div class="speckit-icon">📝</div>
+                        <div class="speckit-label">Specify</div>
+                        <div class="speckit-desc">需求规范</div>
+                        <div class="speckit-cmd">/speckit.specify</div>
+                    </div>
+                    <span style="color: var(--accent); font-size: 2rem;">→</span>
+                    <div class="speckit-step">
+                        <div class="speckit-icon">📐</div>
+                        <div class="speckit-label">Plan</div>
+                        <div class="speckit-desc">技术规划</div>
+                        <div class="speckit-cmd">/speckit.plan</div>
+                    </div>
+                    <span style="color: var(--accent); font-size: 2rem;">→</span>
+                    <div class="speckit-step">
+                        <div class="speckit-icon">✅</div>
+                        <div class="speckit-label">Tasks</div>
+                        <div class="speckit-desc">任务分解</div>
+                        <div class="speckit-cmd">/speckit.tasks</div>
+                    </div>
+                    <span style="color: var(--accent); font-size: 2rem;">→</span>
+                    <div class="speckit-step">
+                        <div class="speckit-icon">🚀</div>
+                        <div class="speckit-label">Implement</div>
+                        <div class="speckit-desc">执行实现</div>
+                        <div class="speckit-cmd">/speckit.implement</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="constitution">步骤1: Constitution</div>
+                <div class="tab" data-tab="specify">步骤2: Specify</div>
+                <div class="tab" data-tab="plan">步骤3: Plan</div>
+                <div class="tab" data-tab="tasks">步骤4: Tasks</div>
+                <div class="tab" data-tab="implement">步骤5: Implement</div>
+            </div>
+
+            <div class="tab-content active" id="constitution">
+                <div class="step-detail">
+                    <h3>📜 步骤 1: 创建项目宪法 (Constitution)</h3>
+
+                    <div class="command-box">
+                        <code>/speckit.constitution</code>
+                        <span class="command-desc">一次性初始化，建立项目核心原则</span>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: var(--accent);">目的</h4>
+                    <p style="color: var(--text-secondary);">
+                        项目宪法是整个项目的"根本大法"，定义了核心原则、技术栈、质量标准和安全要求。
+                        所有后续的规范和实现都必须遵循宪法中的原则。
+                    </p>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">核心内容</h4>
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <div class="feature-icon">🎯</div>
+                            <div class="feature-text">
+                                <strong>核心原则</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">代码质量标准、性能要求、设计哲学</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🛠️</div>
+                            <div class="feature-text">
+                                <strong>技术栈</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">编程语言、框架、数据库、工具链</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🧪</div>
+                            <div class="feature-text">
+                                <strong>测试标准</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">测试覆盖率、测试类型、验收标准</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🔒</div>
+                            <div class="feature-text">
+                                <strong>安全规范</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">数据隐私、认证授权、输入验证</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">示例内容</h4>
+                    <div class="code-example">
+                        <pre><code># 项目宪法：PDF AI 对话应用
+
+## 核心原则
+- 使用 TypeScript 严格模式
+- 遵循 ESLint 和 Prettier 配置
+- 保持函数单一职责
+
+## 技术栈
+- 前端: Next.js 14+ (App Router)
+- 语言: TypeScript 5.x
+- AI 集成: LangChain.js
+- PDF 处理: pdf-parse 或 pdf.js
+
+## 性能要求
+- PDF 解析: 10MB 文件 &lt; 5秒
+- AI 响应: &lt; 3秒
+
+## 安全规范
+- 仅允许 PDF 文件上传
+- 最大文件大小 10MB
+- 实施 CSP 防止 XSS</code></pre>
+                    </div>
+
+                    <div class="tip-box" style="margin-top: 25px;">
+                        <strong>💡 最佳实践</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>宪法应该在项目初期创建，并在整个项目生命周期中保持稳定</li>
+                            <li>每次添加新功能时，都要检查是否违反宪法原则</li>
+                            <li>宪法的修改需要团队讨论和共识</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="specify">
+                <div class="step-detail">
+                    <h3>📝 步骤 2: 定义功能规范 (Specify)</h3>
+
+                    <div class="command-box">
+                        <code>/speckit.specify 添加用户认证功能，支持邮箱密码登录和 JWT token</code>
+                        <span class="command-desc">每个新功能都需要创建规范</span>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: var(--accent);">目的</h4>
+                    <p style="color: var(--text-secondary);">
+                        将业务需求转化为结构化的功能规范，明确"做什么"和"为什么"，而不是"怎么做"。
+                        规范面向业务利益相关者，使用非技术语言描述。
+                    </p>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">核心内容</h4>
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <div class="feature-icon">📖</div>
+                            <div class="feature-text">
+                                <strong>用户故事</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">按优先级排序的用户旅程，每个都可独立测试</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">✅</div>
+                            <div class="feature-text">
+                                <strong>验收场景</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">Given-When-Then 格式的可测试场景</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">📋</div>
+                            <div class="feature-text">
+                                <strong>功能需求</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">系统必须具备的具体能力</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">🎯</div>
+                            <div class="feature-text">
+                                <strong>成功标准</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">可衡量的、技术无关的结果指标</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">规范质量检查</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                        Specify 命令会自动生成质量检查清单，确保规范满足以下标准：
+                    </p>
+                    <div class="checklist-box">
+                        <div class="checklist-item">
+                            <span class="checklist-icon">✓</span>
+                            <span>不包含实现细节（无语言、框架、API 名称）</span>
+                        </div>
+                        <div class="checklist-item">
+                            <span class="checklist-icon">✓</span>
+                            <span>聚焦用户价值和业务需求</span>
+                        </div>
+                        <div class="checklist-item">
+                            <span class="checklist-icon">✓</span>
+                            <span>需求可测试且无歧义</span>
+                        </div>
+                        <div class="checklist-item">
+                            <span class="checklist-icon">✓</span>
+                            <span>成功标准可衡量且技术无关</span>
+                        </div>
+                    </div>
+
+                    <div class="tip-box" style="margin-top: 25px;">
+                        <strong>💡 独立可测试用户故事原则</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>每个用户故事都应该可以独立开发、测试、部署</li>
+                            <li>按优先级排序（P1, P2, P3...），P1 是 MVP</li>
+                            <li>如果只实现 P1，应该仍然是一个可用的产品</li>
+                            <li>用户故事之间尽量减少依赖关系</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="plan">
+                <div class="step-detail">
+                    <h3>📐 步骤 3: 技术规划 (Plan)</h3>
+
+                    <div class="command-box">
+                        <code>/speckit.plan 使用 TypeScript + Next.js + Prisma 实现</code>
+                        <span class="command-desc">指定技术栈，生成技术设计方案</span>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: var(--accent);">目的</h4>
+                    <p style="color: var(--text-secondary);">
+                        将功能规范转化为技术设计方案，解决"怎么做"的问题。包括技术选型、架构设计、
+                        数据模型、接口定义等。
+                    </p>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">三阶段设计流程</h4>
+
+                    <div class="phase-flow">
+                        <div class="phase-flow-item">
+                            <div class="phase-number">0</div>
+                            <div class="phase-content">
+                                <strong>Phase 0: 研究阶段</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                                    解决所有 "NEEDS CLARIFICATION" 项，进行技术选型研究
+                                </p>
+                                <div class="output-file">📄 生成: research.md</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phase-flow">
+                        <div class="phase-flow-item">
+                            <div class="phase-number">1</div>
+                            <div class="phase-content">
+                                <strong>Phase 1: 设计阶段</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                                    创建数据模型、接口契约、快速开始指南
+                                </p>
+                                <div class="output-files">
+                                    <span class="output-file">📄 data-model.md</span>
+                                    <span class="output-file">📁 contracts/*</span>
+                                    <span class="output-file">📄 quickstart.md</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phase-flow">
+                        <div class="phase-flow-item">
+                            <div class="phase-number">2</div>
+                            <div class="phase-content">
+                                <strong>Phase 2: 宪法检查</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                                    验证设计方案是否符合项目宪法要求
+                                </p>
+                                <div class="checklist-item" style="margin-top: 10px;">
+                                    <span class="checklist-icon">⚠️</span>
+                                    <span>如果违反宪法，必须说明理由并记录在案</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">核心输出文档</h4>
+                    <div class="docs-grid">
+                        <div class="doc-card">
+                            <div class="doc-icon">🔬</div>
+                            <div class="doc-title">research.md</div>
+                            <div class="doc-desc">记录技术选型决策和理由，解决规范中的不明确点</div>
+                        </div>
+                        <div class="doc-card">
+                            <div class="doc-icon">🗃️</div>
+                            <div class="doc-title">data-model.md</div>
+                            <div class="doc-desc">定义数据实体、字段、关系和验证规则</div>
+                        </div>
+                        <div class="doc-card">
+                            <div class="doc-icon">🤝</div>
+                            <div class="doc-title">contracts/*</div>
+                            <div class="doc-desc">定义外部接口（API、CLI、UI 契约等）</div>
+                        </div>
+                        <div class="doc-card">
+                            <div class="doc-icon">🚀</div>
+                            <div class="doc-title">quickstart.md</div>
+                            <div class="doc-desc">快速开始指南，验证设计方案可执行</div>
+                        </div>
+                    </div>
+
+                    <div class="tip-box" style="margin-top: 25px;">
+                        <strong>💡 宪法检查的重要性</strong>
+                        <p style="margin-top: 10px; color: var(--text-secondary);">
+                            宪法检查是一个"守门员"机制，确保所有技术决策都符合项目的核心原则。
+                            如果设计方案违反了宪法，必须提供充分的理由，并记录在 Complexity Tracking 表中。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tasks">
+                <div class="step-detail">
+                    <h3>✅ 步骤 4: 任务分解 (Tasks)</h3>
+
+                    <div class="command-box">
+                        <code>/speckit.tasks</code>
+                        <span class="command-desc">基于规范和计划生成可执行任务列表</span>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: var(--accent);">目的</h4>
+                    <p style="color: var(--text-secondary);">
+                        将设计文档转化为可执行的、独立的、可验证的任务列表。任务按用户故事分组，
+                        支持并行开发和增量交付。
+                    </p>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">任务组织结构</h4>
+                    <div class="task-structure">
+                        <div class="task-phase">
+                            <div class="task-phase-title">Phase 1: Setup (共享基础设施)</div>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">项目初始化和基本结构</p>
+                            <div class="task-examples">
+                                <span class="task-tag">T001 项目结构</span>
+                                <span class="task-tag">T002 依赖初始化</span>
+                                <span class="task-tag">T003 [P] 代码规范配置</span>
+                            </div>
+                        </div>
+
+                        <div class="task-phase">
+                            <div class="task-phase-title">Phase 2: Foundational (阻塞前提条件)</div>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">核心基础设施，所有用户故事的前置依赖</p>
+                            <div class="task-examples">
+                                <span class="task-tag">T004 数据库schema</span>
+                                <span class="task-tag">T005 [P] 认证框架</span>
+                                <span class="task-tag">T006 [P] API路由结构</span>
+                            </div>
+                            <div class="checkpoint">
+                                ⚠️ Checkpoint: 基础设施完成，用户故事可以并行开始
+                            </div>
+                        </div>
+
+                        <div class="task-phase">
+                            <div class="task-phase-title">Phase 3+: User Stories (按优先级)</div>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary);">每个用户故事独立可测试、可交付</p>
+                            <div class="task-examples">
+                                <span class="task-tag">T010 [P] [US1] 测试</span>
+                                <span class="task-tag">T011 [P] [US1] 模型</span>
+                                <span class="task-tag">T012 [US1] 服务实现</span>
+                            </div>
+                            <div class="checkpoint">
+                                🎯 Checkpoint: User Story 1 可独立验证 (MVP!)
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="mark-top: 25px; color: var(--accent);">任务格式说明</h4>
+                    <div class="format-box">
+                        <code>[ID] [P?] [Story] Description</code>
+                        <ul style="margin-top: 15px; padding-left: 20px; color: var(--text-secondary);">
+                            <li><strong>[ID]</strong>: 任务编号（T001, T002...）</li>
+                            <li><strong>[P]</strong>: 可并行执行（不同文件，无依赖）</li>
+                            <li><strong>[Story]</strong>: 所属用户故事（US1, US2, US3...）</li>
+                            <li><strong>Description</strong>: 包含具体文件路径的任务描述</li>
+                        </ul>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">增量交付策略</h4>
+                    <div class="delivery-strategy">
+                        <div class="delivery-step">
+                            <div class="delivery-number">1</div>
+                            <div class="delivery-text">
+                                <strong>完成 Setup + Foundational</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">基础设施就绪</p>
+                            </div>
+                        </div>
+                        <span style="color: var(--accent);">→</span>
+                        <div class="delivery-step">
+                            <div class="delivery-number">2</div>
+                            <div class="delivery-text">
+                                <strong>添加 User Story 1 (P1)</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">独立测试 → 部署/演示 = MVP!</p>
+                            </div>
+                        </div>
+                        <span style="color: var(--accent);">→</span>
+                        <div class="delivery-step">
+                            <div class="delivery-number">3</div>
+                            <div class="delivery-text">
+                                <strong>添加 User Story 2 (P2)</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">独立测试 → 部署/演示</p>
+                            </div>
+                        </div>
+                        <span style="color: var(--accent);">→</span>
+                        <div class="delivery-step">
+                            <div class="delivery-number">4</div>
+                            <div class="delivery-text">
+                                <strong>继续添加更多故事...</strong>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">每个故事独立增加价值</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tip-box" style="margin-top: 25px;">
+                        <strong>💡 并行开发机会</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>所有标记 [P] 的任务可以并行执行</li>
+                            <li>Foundational 完成后，不同用户故事可以并行开发</li>
+                            <li>同一用户故事内的测试和模型可以并行编写</li>
+                            <li>适合多人团队协作开发</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="implement">
+                <div class="step-detail">
+                    <h3>🚀 步骤 5: 执行实现 (Implement)</h3>
+
+                    <div class="command-box">
+                        <code>/speckit.implement</code>
+                        <span class="command-desc">按任务列表执行所有任务，完成功能开发</span>
+                    </div>
+
+                    <h4 style="margin-top: 30px; color: var(--accent);">目的</h4>
+                    <p style="color: var(--text-secondary);">
+                        按照任务列表的顺序和依赖关系，逐步实现所有任务。实现过程遵循规范和计划文档，
+                        确保代码质量和设计一致性。
+                    </p>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">实现流程</h4>
+                    <div class="implement-flow">
+                        <div class="implement-step">
+                            <div class="implement-badge">1</div>
+                            <div class="implement-content">
+                                <strong>读取任务列表</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">解析 tasks.md，理解任务顺序和依赖关系</p>
+                            </div>
+                        </div>
+                        <div class="implement-step">
+                            <div class="implement-badge">2</div>
+                            <div class="implement-content">
+                                <strong>按顺序执行任务</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">尊重依赖关系，标记任务进行中/完成状态</p>
+                            </div>
+                        </div>
+                        <div class="implement-step">
+                            <div class="implement-badge">3</div>
+                            <div class="implement-content">
+                                <strong>代码质量保证</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">遵循宪法中的代码规范和安全要求</p>
+                            </div>
+                        </div>
+                        <div class="implement-step">
+                            <div class="implement-badge">4</div>
+                            <div class="implement-content">
+                                <strong>检查点验证</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">在每个检查点验证用户故事独立可用</p>
+                            </div>
+                        </div>
+                        <div class="implement-step">
+                            <div class="implement-badge">5</div>
+                            <div class="implement-content">
+                                <strong>增量交付</strong>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">每个用户故事完成后可独立部署</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">实现原则</h4>
+                    <div class="principles-grid">
+                        <div class="principle-card success">
+                            <div class="principle-header">
+                                <span class="principle-icon">✓</span>
+                                <strong>遵循规范</strong>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">严格按照 spec.md 的用户故事和验收标准实现</p>
+                        </div>
+                        <div class="principle-card success">
+                            <div class="principle-header">
+                                <span class="principle-icon">✓</span>
+                                <strong>遵循设计</strong>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">按照 plan.md 的技术方案和数据模型实现</p>
+                        </div>
+                        <div class="principle-card success">
+                            <div class="principle-header">
+                                <span class="principle-icon">✓</span>
+                                <strong>遵循宪法</strong>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">遵守 constitution.md 的所有原则和标准</p>
+                        </div>
+                        <div class="principle-card warning">
+                            <div class="principle-header">
+                                <span class="principle-icon">!</span>
+                                <strong>不过度设计</strong>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">只实现规范中明确要求的功能，不添加额外功能</p>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 25px; color: var(--accent);">增量交付示例</h4>
+                    <div class="milestone-timeline">
+                        <div class="milestone">
+                            <div class="milestone-dot"></div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">Milestone 1: MVP</div>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">完成 User Story 1 (P1) - 最小可行产品</p>
+                                <div class="milestone-status">可部署 | 可演示 | 有价值</div>
+                            </div>
+                        </div>
+                        <div class="milestone">
+                            <div class="milestone-dot"></div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">Milestone 2: Enhanced</div>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">完成 User Story 2 (P2) - 增强功能</p>
+                                <div class="milestone-status">包含 MVP | 更多价值</div>
+                            </div>
+                        </div>
+                        <div class="milestone">
+                            <div class="milestone-dot"></div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">Milestone 3: Complete</div>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary);">完成所有用户故事 - 完整功能</p>
+                                <div class="milestone-status">全部就绪 | 生产部署</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tip-box" style="margin-top: 25px;">
+                        <strong>💡 实现最佳实践</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            <li>每个任务完成后提交代码，便于回滚和代码审查</li>
+                            <li>遇到阻塞及时沟通，不要盲目绕过</li>
+                            <li>保持代码整洁，避免"以后再重构"的想法</li>
+                            <li>定期在检查点验证，确保用户故事独立可用</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="thinking-diagram" style="margin-top: 60px;">
+                <h3>完整开发周期示例</h3>
+                <div class="example-flow">
+                    <div class="example-step">
+                        <div class="example-time">第 1 天</div>
+                        <div class="example-content">
+                            <code>/speckit.constitution</code>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                                创建项目宪法（一次性）
+                            </p>
+                        </div>
+                    </div>
+                    <span style="color: var(--accent);">↓</span>
+                    <div class="example-step">
+                        <div class="example-time">第 2 天上午</div>
+                        <div class="example-content">
+                            <code>/speckit.specify 添加PDF上传和对话功能</code>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                                生成功能规范 spec.md
+                            </p>
+                        </div>
+                    </div>
+                    <span style="color: var(--accent);">↓</span>
+                    <div class="example-step">
+                        <div class="example-time">第 2 天下午</div>
+                        <div class="example-content">
+                            <code>/speckit.plan Next.js + TypeScript + LangChain</code>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                                生成技术设计 plan.md + 数据模型
+                            </p>
+                        </div>
+                    </div>
+                    <span style="color: var(--accent);">↓</span>
+                    <div class="example-step">
+                        <div class="example-time">第 3 天上午</div>
+                        <div class="example-content">
+                            <code>/speckit.tasks</code>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                                分解为 28 个可执行任务
+                            </p>
+                        </div>
+                    </div>
+                    <span style="color: var(--accent);">↓</span>
+                    <div class="example-step">
+                        <div class="example-time">第 3-7 天</div>
+                        <div class="example-content">
+                            <code>/speckit.implement</code>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
+                                执行实现，增量交付 MVP → Enhanced → Complete
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <p style="text-align: center; color: var(--success); margin-top: 30px;">
+                    ✓ 每个阶段都有明确的输入和输出，可追溯、可验证、可协作
+                </p>
+            </div>
+
+            <div class="summary-box" style="margin-top: 40px;">
+                <h3>Spec-Kit 核心价值</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div class="value-item">
+                        <div style="font-size: 2rem;">🎯</div>
+                        <strong>结构化思维</strong>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                            将模糊想法转化为清晰规范
+                        </p>
+                    </div>
+                    <div class="value-item">
+                        <div style="font-size: 2rem;">🔗</div>
+                        <strong>可追溯性</strong>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                            从需求到代码的完整链路
+                        </p>
+                    </div>
+                    <div class="value-item">
+                        <div style="font-size: 2rem;">🤝</div>
+                        <strong>团队协作</strong>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                            统一的语言和工作流程
+                        </p>
+                    </div>
+                    <div class="value-item">
+                        <div style="font-size: 2rem;">📦</div>
+                        <strong>增量交付</strong>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                            每个用户故事都可独立部署
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <footer>
-            <p>文档版本: 2.0.0 | 最后更新: 2025-03-07 | 配套工具: <a href="#">Spec Kit</a></p>
+            <p>文档版本: 2.1.0 | 最后更新: 2026-03-08 | 配套工具: <a href="https://github.com/speckit/speckit">Spec Kit</a></p>
         </footer>
     </div>
 
