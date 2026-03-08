@@ -87,8 +87,8 @@ export async function getPDF(pdfId: string): Promise<PDFFile | null> {
       return null;
     }
 
-    // @upstash/redis auto-deserializes JSON, no need to parse
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    // @upstash/redis auto-deserializes JSON, data is already an object
+    const parsed = data as any;
     const pdf: PDFFile = {
       ...parsed,
       uploadedAt: new Date(parsed.uploadedAt),
@@ -185,8 +185,8 @@ export async function getVectorChunks(
       return null;
     }
 
-    // @upstash/redis auto-deserializes JSON
-    const chunks = typeof data === 'string' ? JSON.parse(data) : data;
+    // @upstash/redis auto-deserializes JSON, data is already an array
+    const chunks = data as Array<{ content: string; metadata: Record<string, unknown> }>;
     console.log(`[Redis] ✓ Retrieved ${chunks.length} vector chunks for ${pdfId}`);
     return chunks;
   } catch (error) {
@@ -210,8 +210,8 @@ export async function getVectorEmbeddings(
       return null;
     }
 
-    // @upstash/redis auto-deserializes JSON
-    const embeddings = typeof data === 'string' ? JSON.parse(data) : data;
+    // @upstash/redis auto-deserializes JSON, data is already an array
+    const embeddings = data as number[][];
     console.log(`[Redis] ✓ Retrieved ${embeddings.length} vector embeddings for ${pdfId}`);
     return embeddings;
   } catch (error) {

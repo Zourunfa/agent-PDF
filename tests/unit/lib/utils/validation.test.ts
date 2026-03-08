@@ -15,13 +15,13 @@ describe("Validation Utilities", () => {
       expect(result.sanitizedName).toBeDefined();
     });
 
-    it("should reject files larger than 10MB", () => {
+    it("should reject files larger than 1MB", () => {
       const file = new File(["content"], "large.pdf", { type: "application/pdf" });
-      Object.defineProperty(file, "size", { value: 11 * 1024 * 1024 }); // 11MB
+      Object.defineProperty(file, "size", { value: 2 * 1024 * 1024 }); // 2MB
 
       const result = validatePDFFile(file);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("10MB");
+      expect(result.error).toContain("1MB");
     });
 
     it("should reject non-PDF files", () => {

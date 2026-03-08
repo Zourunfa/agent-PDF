@@ -1,11 +1,23 @@
 /**
- * Vector store utilities using LangChain MemoryVectorStore
+ * Vector store utilities using LangChain MemoryVectorStore + Pinecone
+ * 
+ * 架构：
+ * - Pinecone: 持久化向量存储（跨实例共享）
+ * - MemoryVectorStore: 内存缓存（单次请求快速访问）
+ * - Redis: PDF 元数据和文本内容（不再存储向量）
  */
 
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { Document } from "@langchain/core/documents";
 import { embeddings } from "./config";
 import { getEmbeddings } from "./config";
+import { 
+  storePineconeVectors, 
+  searchPineconeVectors, 
+  deletePineconeVectors,
+  hasPineconeVectors,
+} from "@/lib/pinecone/vector-store";
+import { isPineconeConfigured } from "@/lib/pinecone/config";
 
 // Type for vector store data with embeddings
 interface VectorStoreData {
@@ -52,32 +64,37 @@ export async function getVectorStore(pdfId: string): Promise<MemoryVectorStore |
 
 /**
  * Create vector store from documents
+ * 
+ * 新架构：
+ * 1. 创建内存向量存储（快速访问）
+ * 2. 如果配置了 Pinecone，存储到 Pinecone（持久化）
+ * 3. 不再存储到 Redis（Redis 只存 PDF 元数据）
  */
 export async function createVectorStore(
   pdfId: string,
   documents: Document[],
-  storeEmbeddings = false
+  storeToPinecone = true
 ): Promise<MemoryVectorStore> {
   const cache = getVectorStoreCache();
   console.log(`[VectorStore] Creating vector store for ${pdfId} with ${documents.length} documents`);
+  
+  // 1. 创建内存向量存储
   const vectorStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
   cache.set(pdfId, vectorStore);
-  console.log(`[VectorStore] Vector store created successfully for ${pdfId}`);
+  console.log(`[VectorStore] ✓ Vector store created in memory for ${pdfId}`);
   console.log(`[VectorStore] Cache now has ${cache.size} stores:`, Array.from(cache.keys()));
 
-  // Store embeddings in Redis if requested
-  if (storeEmbeddings) {
+  // 2. 存储到 Pinecone（如果配置了）
+  if (storeToPinecone && isPineconeConfigured) {
     try {
-      const embeddingModel = getEmbeddings();
-      const texts = documents.map(doc => doc.pageContent);
-      const embeddingVectors = await embeddingModel.embedDocuments(texts);
-
-      const { setVectorEmbeddings } = await import('@/lib/storage/redis-cache');
-      await setVectorEmbeddings(pdfId, embeddingVectors);
-      console.log(`[VectorStore] ✓ Stored ${embeddingVectors.length} embeddings in Redis for ${pdfId}`);
+      await storePineconeVectors(pdfId, documents);
+      console.log(`[VectorStore] ✓ Stored vectors to Pinecone for ${pdfId}`);
     } catch (error) {
-      console.log(`[VectorStore] Failed to store embeddings in Redis:`, error);
+      console.error(`[VectorStore] ✗ Failed to store to Pinecone:`, error);
+      // 不抛出错误，继续使用内存存储
     }
+  } else if (!isPineconeConfigured) {
+    console.log(`[VectorStore] ⚠️ Pinecone not configured, using memory-only storage`);
   }
 
   return vectorStore;
@@ -85,6 +102,11 @@ export async function createVectorStore(
 
 /**
  * Create vector store from text chunks
+ * 
+ * 新架构：
+ * 1. 存储 chunks 到 Redis（文本内容）
+ * 2. 创建向量存储并存到 Pinecone（向量数据）
+ * 3. 缓存到内存（快速访问）
  */
 export async function createVectorStoreFromChunks(
   pdfId: string,
@@ -94,6 +116,7 @@ export async function createVectorStoreFromChunks(
   console.log(`[VectorStore] API Key check:`, {
     alibaba: !!process.env.ALIBABA_API_KEY,
     qwen: !!process.env.QWEN_API_KEY,
+    pinecone: isPineconeConfigured,
   });
 
   const documents = chunks.map(
@@ -105,15 +128,16 @@ export async function createVectorStoreFromChunks(
   );
 
   try {
-    // Store chunks in Redis for persistence
+    // 1. 存储 chunks 到 Redis（只存文本，不存向量）
     try {
       const { setVectorChunks } = await import('@/lib/storage/redis-cache');
       await setVectorChunks(pdfId, chunks);
+      console.log(`[VectorStore] ✓ Stored ${chunks.length} chunks to Redis`);
     } catch (redisError) {
-      console.log(`[VectorStore] Redis not available for chunks, using in-memory only`);
+      console.log(`[VectorStore] Redis not available for chunks, continuing...`);
     }
 
-    // Create vector store with embeddings storage enabled
+    // 2. 创建向量存储（会自动存到 Pinecone）
     const vectorStore = await createVectorStore(pdfId, documents, true);
     console.log(`[VectorStore] ✓ Successfully created and cached vector store`);
 
@@ -133,6 +157,11 @@ export async function createVectorStoreFromChunks(
 
 /**
  * Search similar documents
+ * 
+ * 新架构：
+ * 1. 优先使用 Pinecone 搜索（持久化，跨实例）
+ * 2. 如果 Pinecone 未配置，使用内存搜索
+ * 3. 如果内存也没有，尝试从 Redis 恢复
  */
 export async function searchSimilarDocuments(
   pdfId: string,
@@ -140,17 +169,35 @@ export async function searchSimilarDocuments(
   k: number = 4
 ): Promise<Document[]> {
   console.log(`[VectorStore] Searching for "${query}" in ${pdfId} (k=${k})`);
+
+  // 策略 1: 使用 Pinecone 搜索（推荐）
+  if (isPineconeConfigured) {
+    console.log(`[VectorStore] Using Pinecone for search...`);
+    try {
+      const results = await searchPineconeVectors(pdfId, query, k);
+      if (results.length > 0) {
+        console.log(`[VectorStore] ✓ Found ${results.length} results from Pinecone`);
+        return results;
+      }
+      console.log(`[VectorStore] No results from Pinecone, trying fallback...`);
+    } catch (error) {
+      console.error(`[VectorStore] Pinecone search failed:`, error);
+      console.log(`[VectorStore] Falling back to memory search...`);
+    }
+  }
+
+  // 策略 2: 使用内存向量存储
   let vectorStore = await getVectorStore(pdfId);
 
-  // If not in memory, try to restore from Redis
+  // 策略 3: 如果内存没有，尝试从 Redis 恢复
   if (!vectorStore) {
     console.log(`[VectorStore] Vector store not in memory, checking Redis...`);
     try {
-      const { getVectorChunks, getVectorEmbeddings } = await import('@/lib/storage/redis-cache');
+      const { getVectorChunks } = await import('@/lib/storage/redis-cache');
       const chunks = await getVectorChunks(pdfId);
-      const storedEmbeddings = await getVectorEmbeddings(pdfId);
 
       if (chunks && chunks.length > 0) {
+        console.log(`[VectorStore] ✓ Found ${chunks.length} chunks in Redis, recreating vector store...`);
         const documents = chunks.map(
           (chunk) =>
             new Document({
@@ -158,20 +205,10 @@ export async function searchSimilarDocuments(
               metadata: chunk.metadata,
             })
         );
-
-        // Check if we have stored embeddings
-        if (storedEmbeddings && storedEmbeddings.length === chunks.length) {
-          console.log(`[VectorStore] ✓ Found ${storedEmbeddings.length} stored embeddings, restoring vector store without recomputing...`);
-          // Create new vector store and add vectors
-          vectorStore = new MemoryVectorStore(embeddings);
-          await vectorStore.addVectors(storedEmbeddings, documents);
-          getVectorStoreCache().set(pdfId, vectorStore);
-          console.log(`[VectorStore] ✓ Vector store restored from Redis with stored embeddings`);
-        } else {
-          console.log(`[VectorStore] ✓ Found ${chunks.length} chunks in Redis, recreating vector store (will recompute embeddings)...`);
-          vectorStore = await createVectorStore(pdfId, documents);
-          console.log(`[VectorStore] ✓ Vector store restored from Redis`);
-        }
+        
+        // 重新创建向量存储（不存到 Pinecone，因为应该已经存在）
+        vectorStore = await createVectorStore(pdfId, documents, false);
+        console.log(`[VectorStore] ✓ Vector store restored from Redis`);
       }
     } catch (redisError) {
       console.log(`[VectorStore] Redis not available or no chunks found:`, redisError);
@@ -183,8 +220,9 @@ export async function searchSimilarDocuments(
     return [];
   }
 
+  // 使用内存向量存储搜索
   const results = await vectorStore.similaritySearchWithScore(query, k);
-  console.log(`[VectorStore] Found ${results.length} results for query "${query}"`);
+  console.log(`[VectorStore] Found ${results.length} results from memory store`);
 
   // Log scores for debugging
   results.forEach(([doc, score], idx) => {
@@ -211,11 +249,25 @@ export async function searchSimilarDocuments(
 
 /**
  * Clear vector store for a PDF
+ * 
+ * 清理内存缓存和 Pinecone 中的向量数据
  */
-export function clearVectorStore(pdfId: string): void {
+export async function clearVectorStore(pdfId: string): Promise<void> {
   const cache = getVectorStoreCache();
   console.log(`[VectorStore] Clearing vector store for ${pdfId}`);
+  
+  // 1. 清理内存缓存
   cache.delete(pdfId);
+  
+  // 2. 清理 Pinecone
+  if (isPineconeConfigured) {
+    try {
+      await deletePineconeVectors(pdfId);
+      console.log(`[VectorStore] ✓ Deleted Pinecone vectors for ${pdfId}`);
+    } catch (error) {
+      console.error(`[VectorStore] ✗ Failed to delete Pinecone vectors:`, error);
+    }
+  }
 }
 
 /**
