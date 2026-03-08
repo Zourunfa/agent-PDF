@@ -523,6 +523,22 @@
             to { opacity: 1; }
         }
 
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
         /* Architecture */
         .arch-diagram {
             background: var(--bg-card);
@@ -1132,20 +1148,79 @@ console.<span class="function">log</span>(vectors.length);  <span class="comment
         function generateEmbedding() {
             const text = document.getElementById('textInput').value;
             const visual = document.getElementById('embeddingVisual');
+            const button = event.target;
 
-            // 模拟生成32维向量
-            const vector = [];
-            for (let i = 0; i < 32; i++) {
-                vector.push((Math.random() * 2 - 1).toFixed(3));
-            }
+            // 禁用按钮并显示加载状态
+            button.disabled = true;
+            button.textContent = '生成中...';
+            button.style.opacity = '0.7';
 
-            visual.innerHTML = vector.map((val, idx) => {
-                const intensity = Math.abs(parseFloat(val));
-                const color = val > 0 ? 'rgba(99, 102, 241,' : 'rgba(139, 92, 246,';
-                return `<div class="embedding-bar" style="
-                    width: ${Math.abs(val) * 100}%;
-                    background: ${color} ${intensity})`;
-                }).join('');
+            // 清空之前的内容
+            visual.innerHTML = '<div style="text-align:center; color:var(--text-secondary); padding:20px;">正在生成向量...</div>';
+
+            // 模拟生成过程的动画
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                if (progress <= 100) {
+                    visual.innerHTML = `
+                        <div style="text-align:center; margin-bottom:15px;">
+                            <div style="font-size:3rem; animation: bounce 0.6s ease-in-out infinite;">🧮</div>
+                            <div style="color:var(--primary); font-weight:600; margin-top:10px;">
+                                生成向量中... ${progress}%
+                            </div>
+                        </div>
+                        <div style="width:100%; height:8px; background:rgba(99,102,241,0.1); border-radius:4px; overflow:hidden;">
+                            <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--secondary)); transition:width 0.3s ease;"></div>
+                        </div>
+                    `;
+                }
+            }, 100);
+
+            // 1秒后生成向量
+            setTimeout(() => {
+                clearInterval(progressInterval);
+
+                // 模拟生成32维向量
+                const vector = [];
+                for (let i = 0; i < 32; i++) {
+                    vector.push((Math.random() * 2 - 1).toFixed(3));
+                }
+
+                // 显示向量动画
+                visual.innerHTML = '<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>';
+                const container = visual.querySelector('div');
+
+                vector.forEach((val, idx) => {
+                    setTimeout(() => {
+                        const intensity = Math.abs(parseFloat(val));
+                        const color = val > 0 ? 'rgba(99, 102, 241,' : 'rgba(139, 92, 246,';
+                        const bar = document.createElement('div');
+                        bar.className = 'embedding-bar';
+                        bar.style.cssText = `
+                            width: 0;
+                            height: 20px;
+                            background: ${color} ${intensity});
+                            border-radius: 4px;
+                            transition: width 0.5s ease;
+                            animation: slideIn 0.3s ease-out;
+                        `;
+                        container.appendChild(bar);
+
+                        // 触发动画
+                        setTimeout(() => {
+                            bar.style.width = `${Math.abs(val) * 100}px`;
+                        }, 10);
+                    }, idx * 30);
+                });
+
+                // 恢复按钮
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = '生成向量';
+                    button.style.opacity = '1';
+                }, vector.length * 30 + 500);
+            }, 1000);
         }
 
         // 页面加载时生成一次

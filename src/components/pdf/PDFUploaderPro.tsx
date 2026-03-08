@@ -233,7 +233,7 @@ export function PDFUploaderPro() {
         </p>
         <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
         <p className="ant-upload-hint">
-          支持 PDF 格式，最大 10MB，支持 OCR 扫描件识别
+          支持 PDF 格式，最大 1MB，支持 OCR 扫描件识别
         </p>
       </Dragger>
       {uploading && progress > 0 && (
