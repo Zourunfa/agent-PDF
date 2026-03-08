@@ -10,7 +10,7 @@ export interface ValidationResult {
   sanitizedName?: string;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 const ALLOWED_MIME_TYPE = "application/pdf";
 
 /**
@@ -21,7 +21,7 @@ export function validatePDFFile(file: File): ValidationResult {
   if (file.size > MAX_FILE_SIZE) {
     return {
       valid: false,
-      error: `文件大小不能超过 10MB（当前: ${(file.size / 1024 / 1024).toFixed(2)}MB）`,
+      error: `文件大小不能超过 1MB（当前: ${(file.size / 1024 / 1024).toFixed(2)}MB）`,
     };
   }
 

@@ -17,9 +17,11 @@
 ## 技术栈
 
 - **前端**: Next.js 14 (App Router), React 18, TypeScript
-- **UI**: Tailwind CSS, shadcn/ui
-- **AI**: LangChain.js, OpenAI GPT
-- **PDF 处理**: pdf-parse
+- **UI**: Tailwind CSS, shadcn/ui, Ant Design
+- **AI**: LangChain.js, Alibaba Tongyi Qwen
+- **向量数据库**: Pinecone (推荐) 或 内存存储
+- **缓存**: Upstash Redis
+- **PDF 处理**: pdf2json, tesseract.js (OCR)
 
 ## 快速开始
 
@@ -39,10 +41,24 @@ npm install
 创建 `.env.local` 文件：
 
 ```env
-OPENAI_API_KEY=sk-your-api-key-here
-OPENAI_MODEL=gpt-3.5-turbo
-MAX_FILE_SIZE=10485760
+# AI 配置（必需）
+ALIBABA_API_KEY=sk-your-alibaba-api-key-here
+
+# Pinecone 向量数据库（推荐）
+PINECONE_API_KEY=your-pinecone-api-key-here
+PINECONE_INDEX_NAME=pdf-chat
+
+# Upstash Redis（必需）
+KV_REST_API_URL=https://your-redis-url.upstash.io
+KV_REST_API_TOKEN=your-redis-token
 ```
+
+**获取 API Keys:**
+- Alibaba Tongyi: https://dashscope.aliyun.com/
+- Pinecone: https://www.pinecone.io/ (免费版：100K 向量)
+- Upstash Redis: https://upstash.com/ (免费版：256MB)
+
+**详细设置指南**: 查看 [PINECONE_SETUP.md](./PINECONE_SETUP.md)
 
 ### 运行
 
@@ -75,6 +91,9 @@ npm run test:e2e
 src/
 ├── app/              # Next.js App Router
 │   ├── api/          # API Routes
+│   │   ├── upload/   # PDF 上传
+│   │   ├── parse/    # PDF 解析
+│   │   └── chat/     # AI 对话
 │   └── ...
 ├── components/       # React 组件
 │   ├── chat/         # 对话组件
@@ -82,22 +101,48 @@ src/
 │   ├── pdf/          # PDF 组件
 │   └── ui/           # UI 组件
 ├── lib/              # 工具库
-│   ├── chat/         # 对话工具
 │   ├── langchain/    # LangChain 配置
+│   ├── pinecone/     # Pinecone 向量存储
 │   ├── pdf/          # PDF 处理
-│   ├── storage/      # 存储工具
+│   ├── storage/      # Redis 存储
 │   └── utils/        # 通用工具
 ├── types/            # TypeScript 类型
 └── contexts/         # React Context
 ```
 
+## 架构说明
 
-优化技术架构
-方案 A: Pinecone (最简单) ⭐⭐⭐⭐⭐
-// 1. 安装
-npm install @pinecone-database/pinecone
+### 存储架构
 
-// 2. 初始化
+```
+┌─────────────────────────────────────────────────────────┐
+│  三层存储架构                                            │
+└─────────────────────────────────────────────────────────┘
+
+1. Pinecone (向量数据库)
+   ├─ 向量嵌入 (embeddings)
+   ├─ 持久化存储
+   └─ 高性能相似度搜索
+
+2. Redis (Upstash)
+   ├─ PDF 元数据
+   ├─ 文本内容
+   └─ 文本 chunks
+
+3. 内存缓存
+   ├─ 单次请求快速访问
+   └─ 请求结束后清空
+```
+
+### 数据流程
+
+```
+上传 PDF → 解析文本 → 分块 → 生成向量 → 存储到 Pinecone
+                                    ↓
+用户提问 → 向量化 → Pinecone 搜索 → 获取相关文档 → AI 生成回答
+```
+
+**详细架构**: 查看 [docs/ARCHITECTURE_GUIDE.md](./docs/ARCHITECTURE_GUIDE.md)
 import { Pinecone } from '@pinecone-database/pinecone';
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const index = pinecone.index('pdf-chat');
