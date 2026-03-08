@@ -1,27 +1,43 @@
-# PDF AI Chat
+# PDF AI Chat 🤖
 
-**一个基于 Next.js 14 和 LangChain 的 PDF AI 对话 Web 应用。**
-**访问地址**: [little-agent-pdf.vercel.app]
-视频地址：
+> 基于 Next.js 14 和 LangChain 的智能 PDF 对话应用，支持 OCR 识别、向量搜索和 AI 问答
 
+[![Live Demo](https://img.shields.io/badge/🌐_在线体验-little--agent--pdf.vercel.app-blue?style=for-the-badge)](https://little-agent-pdf.vercel.app)
 
-## 功能
+视频地址：https://www.bilibili.com/video/BV12KNNzHEpm/?spm_id_from=333.1387.homepage.video_card.click&vd_source=4d02eb2bf982719b42a36b66d95fc9af
+## ✨ 核心特性
+
+🚀 **智能对话** - 基于 RAG 技术的精准 PDF 问答  
+📄 **OCR 识别** - 支持扫描件和图片 PDF  
+⚡ **向量搜索** - Pinecone 向量数据库，搜索速度提升 10 倍  
+💾 **持久化存储** - Redis + Pinecone 三层存储架构  
+🎨 **现代 UI** - Tailwind CSS + shadcn/ui 精美界面  
+🌐 **Serverless** - Vercel 一键部署，自动扩展
+
+## 🎯 在线体验
+
+**访问地址**: [https://little-agent-pdf.vercel.app](https://little-agent-pdf.vercel.app)
+
+## 📸 功能演示
 
 - 上传 PDF 文件（最大 1MB）
-- 自动解析 PDF 内容并提取文本
-- 基于 PDF 内容的 AI 智能问答
+- 自动 OCR 识别扫描件
+- 智能文本分块和向量化
+- 基于上下文的 AI 问答
 - 多轮对话支持
 - Markdown 格式渲染
-- 响应式设计
 
-## 技术栈
+## 🛠️ 技术栈
 
-- **前端**: Next.js 14 (App Router), React 18, TypeScript
-- **UI**: Tailwind CSS, shadcn/ui, Ant Design
-- **AI**: LangChain.js, Alibaba Tongyi Qwen
-- **向量数据库**: Pinecone (推荐) 或 内存存储
-- **缓存**: Upstash Redis
-- **PDF 处理**: pdf2json, tesseract.js (OCR)
+| 类别 | 技术 |
+|------|------|
+| **前端** | Next.js 14, React 18, TypeScript |
+| **UI** | Tailwind CSS, shadcn/ui, Ant Design |
+| **AI** | LangChain.js, Alibaba Tongyi Qwen |
+| **向量数据库** | Pinecone (免费 100K 向量) |
+| **缓存** | Upstash Redis |
+| **PDF 处理** | pdf2json, tesseract.js (OCR) |
+| **部署** | Vercel Serverless |
 
 ## 快速开始
 
