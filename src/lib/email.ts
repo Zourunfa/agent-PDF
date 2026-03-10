@@ -1,11 +1,15 @@
-// 邮件服务 - 使用 Resend 发送邮件
-// https://resend.com/docs/api-reference/emails/send-email
+// 邮件服务 - 使用 Nodemailer + Gmail
+import nodemailer from 'nodemailer';
 
-import { Resend } from 'resend';
-
-// 初始化 Resend 客户端
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
+// 初始化 Nodemailer 传输
+const transporter = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD
+  ? nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    })
   : null;
 
 // 应用 URL
@@ -309,8 +313,8 @@ export async function sendVerificationEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend API key not configured');
+  if (!transporter) {
+    console.error('Email service not configured');
     return { success: false, error: 'Email service not configured' };
   }
 
@@ -318,20 +322,15 @@ export async function sendVerificationEmail(
     const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
     const html = getVerificationEmailTemplate({ email, name, verifyUrl });
 
-    const { data, error } = await resend.emails.send({
-      from: 'PDF AI Chat <noreply@yourdomain.com>',
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '验证您的邮箱地址 - PDF AI Chat',
       html,
     });
 
-    if (error) {
-      console.error('Failed to send verification email:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log('Verification email sent successfully:', data?.id);
-    return { success: true, messageId: data?.id };
+    console.log('Verification email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Error sending verification email:', error);
     return {
@@ -349,8 +348,8 @@ export async function sendPasswordResetEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend API key not configured');
+  if (!transporter) {
+    console.error('Email service not configured');
     return { success: false, error: 'Email service not configured' };
   }
 
@@ -358,20 +357,15 @@ export async function sendPasswordResetEmail(
     const resetUrl = `${APP_URL}/reset-password?token=${token}`;
     const html = getPasswordResetEmailTemplate({ email, name, resetUrl });
 
-    const { data, error } = await resend.emails.send({
-      from: 'PDF AI Chat <noreply@yourdomain.com>',
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '重置您的密码 - PDF AI Chat',
       html,
     });
 
-    if (error) {
-      console.error('Failed to send password reset email:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log('Password reset email sent successfully:', data?.id);
-    return { success: true, messageId: data?.id };
+    console.log('Password reset email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Error sending password reset email:', error);
     return {
@@ -388,16 +382,16 @@ export async function sendWelcomeEmail(
   email: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend API key not configured');
+  if (!transporter) {
+    console.error('Email service not configured');
     return { success: false, error: 'Email service not configured' };
   }
 
   try {
     const displayName = name || email.split('@')[0];
 
-    const { data, error } = await resend.emails.send({
-      from: 'PDF AI Chat <noreply@yourdomain.com>',
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: '欢迎加入 PDF AI Chat！',
       html: `
@@ -421,12 +415,7 @@ export async function sendWelcomeEmail(
       `,
     });
 
-    if (error) {
-      console.error('Failed to send welcome email:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, messageId: data?.id };
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Error sending welcome email:', error);
     return {
@@ -440,5 +429,5 @@ export async function sendWelcomeEmail(
  * 检查邮件服务是否可用
  */
 export function isEmailServiceAvailable(): boolean {
-  return !!resend;
+  return !!transporter;
 }

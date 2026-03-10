@@ -158,13 +158,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '注册成功！请检查您的邮箱并点击验证链接完成注册',
-      requireVerification: true,
+      message: emailResult.success
+        ? '注册成功！请检查您的邮箱并点击验证链接完成注册'
+        : '注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件',
+      requireVerification: true, // 始终需要验证邮箱
+      emailSent: emailResult.success,
       user: {
         id: authData.user.id,
         email: authData.user.email,
         name: authData.user.user_metadata?.name,
-        emailVerified: false,
+        emailVerified: false, // 始终为 false，必须验证邮箱
       },
     });
   } catch (error) {

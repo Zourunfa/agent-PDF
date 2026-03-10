@@ -46,12 +46,25 @@ function LoginForm() {
       const data = await response.json();
 
       if (!response.ok) {
+        // 处理邮箱未验证的特殊情况
+        if (data.error === 'EMAIL_NOT_VERIFIED') {
+          message.warning(data.message || '请先验证您的邮箱');
+          return;
+        }
         throw new Error(data.message || '登录失败');
       }
 
       message.success('登录成功！');
-      router.push('/');
+      
+      // 等待一下确保 cookies 已经被设置
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 刷新页面以更新认证状态
       router.refresh();
+      
+      // 再等待一下，然后跳转
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push('/');
     } catch (err: any) {
       message.error(err.message || '登录失败，请检查邮箱和密码');
     } finally {

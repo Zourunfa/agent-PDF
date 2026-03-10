@@ -2,16 +2,23 @@
 // GET /api/auth/me
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/middleware';
+import { createClient } from '@/lib/supabase/server';
 
 // 强制动态渲染，因为使用了 cookies()
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const supabase = createClient();
 
-    if (!user) {
+    // 获取当前用户
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error('Auth error:', userError);
       return NextResponse.json(
         {
           success: false,
@@ -22,14 +29,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 获取用户 profile
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      // 如果 profile 不存在，仍然返回用户信息
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name,
+          role: 'user',
+          avatar: null,
+          emailVerified: user.email_confirmed_at != null,
+          createdAt: user.created_at,
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        name: user.profile?.name || user.user_metadata?.name,
-        role: user.profile?.role || 'user',
-        avatar: user.profile?.avatar_url,
+        name: profile?.name || user.user_metadata?.name,
+        role: profile?.role || 'user',
+        avatar: profile?.avatar_url,
         emailVerified: user.email_confirmed_at != null,
         createdAt: user.created_at,
       },
