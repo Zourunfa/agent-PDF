@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Upload, MessageSquare } from 'lucide-react';
+import { apiGet } from '@/lib/utils/api-fetch';
 
 interface QuotaStats {
   upload: {
@@ -43,14 +44,17 @@ export function QuotaDisplay() {
 
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/quota/stats');
-        const data = await response.json();
+        // 使用 skipAuthRedirect 避免因认证失败而触发页面跳转
+        const data = await apiGet<QuotaStats>('/api/quota/stats', {
+          skipAuthRedirect: true,
+        });
 
         if (data.success) {
           setStats(data.data);
         }
       } catch (error) {
-        console.error('Failed to fetch quota stats:', error);
+        // 静默处理错误，不影响用户体验
+        console.log('[QuotaDisplay] Stats not available (user may not be logged in)');
       } finally {
         setLoading(false);
       }

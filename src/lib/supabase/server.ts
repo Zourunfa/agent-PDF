@@ -8,6 +8,9 @@ import type { Database } from './database.types';
 /**
  * 创建服务端 Supabase 客户端
  * 用于服务端组件和 API Routes
+ *
+ * 注意：Middleware 会在每个请求中刷新 session 并更新 cookies
+ * 这里只需要读取 cookies 即可
  */
 export function createClient() {
   const cookieStore = cookies();
@@ -27,7 +30,7 @@ export function createClient() {
             });
           } catch {
             // 在服务端组件中设置 cookie 可能会抛出错误
-            // 可以忽略，因为 setAll 是只读的
+            // 可以忽略，因为 middleware 会处理 cookie 设置
           }
         },
       },
