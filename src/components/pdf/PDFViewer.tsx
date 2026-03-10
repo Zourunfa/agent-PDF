@@ -1,5 +1,5 @@
 /**
- * PDF Viewer Component - Simple iframe preview
+ * PDF Viewer Component - Ant Design Modern
  */
 
 "use client";
@@ -37,17 +37,17 @@ export function PDFViewer() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {loading && (
-        <div style={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 10
         }}>
           <Spin size="large" tip="加载 PDF..." />
         </div>
       )}
-      
+
       {error && (
         <div style={{ padding: 16 }}>
           <Alert
@@ -60,6 +60,7 @@ export function PDFViewer() {
                 重试
               </Button>
             }
+            style={{ borderRadius: 8 }}
           />
         </div>
       )}
@@ -72,8 +73,9 @@ export function PDFViewer() {
             width: '100%',
             height: '100%',
             border: 'none',
-            borderRadius: 8,
-            display: loading ? 'none' : 'block'
+            borderRadius: 12,
+            display: loading ? 'none' : 'block',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}
           title="PDF Preview"
           onLoad={() => setLoading(false)}

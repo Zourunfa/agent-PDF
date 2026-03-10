@@ -1,80 +1,80 @@
 ---
-description: Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation.
+description: 在任务生成后对 spec.md、plan.md 和 tasks.md 进行非破坏性的跨文档一致性和质量分析。
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
   ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
-## User Input
+## 用户输入
 
 ```text
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+在继续之前，你**必须**考虑用户输入（如果不为空）。
 
-## Goal
+## 目标
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
+在实施之前，识别三个核心文档（`spec.md`、`plan.md`、`tasks.md`）中的不一致、重复、歧义和未充分说明的项目。此命令必须仅在 `/speckit.tasks` 成功生成完整的 `tasks.md` 后运行。
 
-## Operating Constraints
+## 操作约束
 
-**STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
+**严格只读**：**不要**修改任何文件。输出结构化的分析报告。提供可选的修复计划（用户必须明确批准后才能手动调用任何后续编辑命令）。
 
-**Constitution Authority**: The project constitution (`/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.analyze`.
+**章程权威**：项目章程（`/memory/constitution.md`）在此分析范围内是**不可协商的**。章程冲突自动为关键级别，需要调整规范、计划或任务——而不是稀释、重新解释或默默忽略原则。如果原则本身需要更改，必须在 `/speckit.analyze` 之外进行单独的、明确的章程更新。
 
-## Execution Steps
+## 执行步骤
 
-### 1. Initialize Analysis Context
+### 1. 初始化分析上下文
 
-Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive absolute paths:
+从仓库根目录运行一次 `{SCRIPT}` 并解析 JSON 以获取 FEATURE_DIR 和 AVAILABLE_DOCS。派生绝对路径：
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md
 - TASKS = FEATURE_DIR/tasks.md
 
-Abort with an error message if any required file is missing (instruct the user to run missing prerequisite command).
-For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+如果缺少任何必需文件，则中止并显示错误消息（指示用户运行缺少的先决条件命令）。
+对于参数中的单引号，如 "I'm Groot"，使用转义语法：例如 'I'\''m Groot'（或者如果可能，使用双引号："I'm Groot"）。
 
-### 2. Load Artifacts (Progressive Disclosure)
+### 2. 加载文档（渐进式披露）
 
-Load only the minimal necessary context from each artifact:
+仅从每个文档加载最少必要的上下文：
 
-**From spec.md:**
+**从 spec.md：**
 
-- Overview/Context
-- Functional Requirements
-- Non-Functional Requirements
-- User Stories
-- Edge Cases (if present)
+- 概述/上下文
+- 功能需求
+- 非功能需求
+- 用户故事
+- 边缘情况（如果存在）
 
-**From plan.md:**
+**从 plan.md：**
 
-- Architecture/stack choices
-- Data Model references
-- Phases
-- Technical constraints
+- 架构/技术栈选择
+- 数据模型引用
+- 阶段
+- 技术约束
 
-**From tasks.md:**
+**从 tasks.md：**
 
-- Task IDs
-- Descriptions
-- Phase grouping
-- Parallel markers [P]
-- Referenced file paths
+- 任务 ID
+- 描述
+- 阶段分组
+- 并行标记 [P]
+- 引用的文件路径
 
-**From constitution:**
+**从章程：**
 
-- Load `/memory/constitution.md` for principle validation
+- 加载 `/memory/constitution.md` 进行原则验证
 
-### 3. Build Semantic Models
+### 3. 构建语义模型
 
-Create internal representations (do not include raw artifacts in output):
+创建内部表示（不要在输出中包含原始文档）：
 
-- **Requirements inventory**: Each functional + non-functional requirement with a stable key (derive slug based on imperative phrase; e.g., "User can upload file" → `user-can-upload-file`)
-- **User story/action inventory**: Discrete user actions with acceptance criteria
-- **Task coverage mapping**: Map each task to one or more requirements or stories (inference by keyword / explicit reference patterns like IDs or key phrases)
-- **Constitution rule set**: Extract principle names and MUST/SHOULD normative statements
+- **需求清单**：每个功能性和非功能性需求都有一个稳定的键（基于命令式短语派生 slug；例如，"用户可以上传文件" → `user-can-upload-file`）
+- **用户故事/操作清单**：具有验收标准的离散用户操作
+- **任务覆盖映射**：将每个任务映射到一个或多个需求或故事（通过关键字推断/显式引用模式，如 ID 或关键短语）
+- **章程规则集**：提取原则名称和 MUST/SHOULD 规范性声明
 
 ### 4. Detection Passes (Token-Efficient Analysis)
 

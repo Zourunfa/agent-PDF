@@ -1,59 +1,104 @@
 /**
  * Chat API Route with SSE streaming
+ * 支持用户认证和数据隔离
  */
 
-import { NextRequest } from "next/server";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { Document as LangChainDocument } from "@langchain/core/documents";
+import { NextRequest } from 'next/server';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { Document as LangChainDocument } from '@langchain/core/documents';
+import { getCurrentUser } from '@/lib/auth/middleware';
+import { canChat, recordQuotaUsage } from '@/lib/quota/check';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  // 获取用户信息
+  const user = await getCurrentUser();
+  const userId = user?.id;
+
+  console.log(`[Chat API] User: ${userId ? 'authenticated' : 'guest'}`);
+
+  // 登录用户配额检查
+  if (user && user.id) {
+    console.log('[Chat API] 检查用户聊天配额...');
+    const quotaCheck = await canChat(user.id);
+
+    if (!quotaCheck.allowed) {
+      console.log('[Chat API] ❌ 用户聊天配额已用完:', quotaCheck);
+      return new Response(
+        JSON.stringify({
+          type: 'error',
+          error: {
+            code: 'QUOTA_EXCEEDED',
+            message: quotaCheck.reason || '今日聊天次数已达上限',
+            quota: {
+              limit: quotaCheck.quotaLimit,
+              used: quotaCheck.used,
+              remaining: quotaCheck.remaining,
+            },
+          },
+        }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    console.log(
+      `[Chat API] ✅ 用户配额正常: ${quotaCheck.used}/${quotaCheck.quotaLimit} (剩余: ${quotaCheck.remaining})`
+    );
+  }
+
   // Lazy load LangChain config to avoid build-time execution
-  const { getChatModel, isApiKeyConfigured } = await import("@/lib/langchain/config");
-  const { searchSimilarDocuments, getVectorStoreIds } = await import("@/lib/langchain/vector-store");
-  
-  const { pdfId, question, conversationId, history, pdfTextContent, pdfPageCount } = await req.json();
+  const { getChatModel, isApiKeyConfigured } = await import('@/lib/langchain/config');
+  const { searchSimilarDocuments, getVectorStoreIds } =
+    await import('@/lib/langchain/vector-store');
+
+  const { pdfId, question, conversationId, history, pdfTextContent, pdfPageCount } =
+    await req.json();
 
   console.log(`[Chat API] Received chat request for PDF: ${pdfId}, question: "${question}"`);
   console.log(`[Chat API] API Key configured: ${isApiKeyConfigured}`);
-  
+
   // Check if API key is configured
   if (!isApiKeyConfigured) {
     return new Response(
       JSON.stringify({
-        type: "error",
+        type: 'error',
         error: {
-          code: "AI_NOT_CONFIGURED",
-          message: "AI 服务未配置。请在 Vercel 环境变量中设置 ALIBABA_API_KEY 或 QWEN_API_KEY。",
+          code: 'AI_NOT_CONFIGURED',
+          message: 'AI 服务未配置。请在 Vercel 环境变量中设置 ALIBABA_API_KEY 或 QWEN_API_KEY。',
         },
       }),
       {
         status: 503,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       }
     );
   }
-  
+
   console.log(`[Chat API] Current vector stores: ${getVectorStoreIds().join(', ')}`);
 
   if (!pdfId || !question) {
     return new Response(
       JSON.stringify({
-        type: "error",
+        type: 'error',
         error: {
-          code: "INVALID_REQUEST",
-          message: "缺少必要参数",
+          code: 'INVALID_REQUEST',
+          message: '缺少必要参数',
         },
       }),
       {
         status: 400,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       }
     );
@@ -64,14 +109,14 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const messageId = conversationId + "-" + Date.now();
+        const messageId = conversationId + '-' + Date.now();
         const startTime = Date.now();
 
         // Send start event
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
-              type: "start",
+              type: 'start',
               messageId,
             })}\n\n`
           )
@@ -85,23 +130,25 @@ export async function POST(req: NextRequest) {
         console.log(`[Chat API] Vector store exists: ${vectorStoreIds.includes(pdfId)}`);
 
         let relevantDocs: LangChainDocument[] = [];
-        
+
         // Check if vector store exists
         const hasVectorStore = vectorStoreIds.includes(pdfId);
-        
+
         if (!hasVectorStore) {
           console.log(`[Chat API] ⚠️ Vector store not found, attempting to recreate...`);
           try {
-            const { getPDFFile } = await import("@/lib/storage/pdf-files");
-            const { splitTextWithMetadata } = await import("@/lib/pdf/text-splitter");
-            const { createVectorStoreFromChunks } = await import("@/lib/langchain/vector-store");
+            const { getPDFFile } = await import('@/lib/storage/pdf-files');
+            const { splitTextWithMetadata } = await import('@/lib/pdf/text-splitter');
+            const { createVectorStoreFromChunks } = await import('@/lib/langchain/vector-store');
 
             let textToUse: string | null = null;
             let pageCountToUse = 0;
 
             // First, try to use text content from client (for Vercel serverless)
             if (pdfTextContent) {
-              console.log(`[Chat API] ✓ Using PDF text from client request (${pdfTextContent.length} chars)`);
+              console.log(
+                `[Chat API] ✓ Using PDF text from client request (${pdfTextContent.length} chars)`
+              );
               textToUse = pdfTextContent;
               pageCountToUse = pdfPageCount || 0;
             } else {
@@ -120,7 +167,9 @@ export async function POST(req: NextRequest) {
               }
 
               if (pdfFile && pdfFile.textContent) {
-                console.log(`[Chat API] ✓ Found PDF text in storage (${pdfFile.textContent.length} chars)`);
+                console.log(
+                  `[Chat API] ✓ Found PDF text in storage (${pdfFile.textContent.length} chars)`
+                );
                 textToUse = pdfFile.textContent;
                 pageCountToUse = pdfFile.pageCount || 0;
               }
@@ -128,17 +177,20 @@ export async function POST(req: NextRequest) {
 
             if (textToUse) {
               console.log(`[Chat API] ✓ Recreating vector store with ${textToUse.length} chars...`);
-              const chunks = await splitTextWithMetadata(
-                textToUse,
-                { pdfId, source: "pdf", pageCount: pageCountToUse }
-              );
+              const chunks = await splitTextWithMetadata(textToUse, {
+                pdfId,
+                source: 'pdf',
+                pageCount: pageCountToUse,
+              });
               console.log(`[Chat API] ✓ Created ${chunks.length} chunks`);
-              await createVectorStoreFromChunks(pdfId, chunks);
+              await createVectorStoreFromChunks(pdfId, chunks, userId);
               console.log(`[Chat API] ✓ Vector store recreated successfully`);
               console.log(`[Chat API] ✓ New vector stores: ${getVectorStoreIds().join(', ')}`);
             } else {
               console.error(`[Chat API] ✗ No PDF text content available`);
-              console.error(`[Chat API] ✗ Client should send pdfTextContent, or storage should have the text`);
+              console.error(
+                `[Chat API] ✗ Client should send pdfTextContent, or storage should have the text`
+              );
             }
           } catch (recreateError) {
             console.error(`[Chat API] ✗ Failed to recreate vector store:`, recreateError);
@@ -150,10 +202,10 @@ export async function POST(req: NextRequest) {
         } else {
           console.log(`[Chat API] ✓ Vector store exists in memory`);
         }
-        
+
         // Now try to search
         try {
-          relevantDocs = await searchSimilarDocuments(pdfId, question, 4);
+          relevantDocs = await searchSimilarDocuments(pdfId, question, 4, userId);
           console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
         } catch (searchError) {
           console.error(`[Chat API] Vector search error:`, searchError);
@@ -161,12 +213,13 @@ export async function POST(req: NextRequest) {
 
         if (relevantDocs.length === 0) {
           console.warn(`[Chat API] No relevant documents found for PDF ${pdfId}`);
-          const errorMsg = "抱歉，无法找到文档内容。文档可能未完成解析，或者服务器已重启导致数据丢失。请重新上传文档。";
+          const errorMsg =
+            '抱歉，无法找到文档内容。文档可能未完成解析，或者服务器已重启导致数据丢失。请重新上传文档。';
 
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
-                type: "token",
+                type: 'token',
                 content: errorMsg,
                 messageId,
               })}\n\n`
@@ -175,12 +228,12 @@ export async function POST(req: NextRequest) {
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
-                type: "end",
+                type: 'end',
                 messageId,
                 metadata: {
                   tokenCount: 0,
                   processingTime: Date.now() - startTime,
-                  modelUsed: "qwen-turbo",
+                  modelUsed: 'qwen-turbo',
                   sourcesFound: 0,
                   hasVectorStore,
                 },
@@ -192,10 +245,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Format context from relevant documents
-        const context = relevantDocs.map((doc, i) => {
-          const metadata = doc.metadata as Record<string, unknown>;
-          return `[文档片段 ${i + 1}]:\n${doc.pageContent}`;
-        }).join("\n\n");
+        const context = relevantDocs
+          .map((doc, i) => {
+            const metadata = doc.metadata as Record<string, unknown>;
+            return `[文档片段 ${i + 1}]:\n${doc.pageContent}`;
+          })
+          .join('\n\n');
 
         console.log(`[Chat API] Found ${relevantDocs.length} relevant documents`);
 
@@ -220,7 +275,7 @@ export async function POST(req: NextRequest) {
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
-                  type: "token",
+                  type: 'token',
                   content: content,
                   messageId,
                 })}\n\n`
@@ -233,16 +288,21 @@ export async function POST(req: NextRequest) {
         const processingTime = Date.now() - startTime;
         console.log(`[Chat API] Response completed: ${tokenCount} tokens in ${processingTime}ms`);
 
+        // 记录用户配额使用（仅登录用户）
+        if (userId) {
+          await recordQuotaUsage(userId, 'pdf_chat_daily', 1, pdfId);
+        }
+
         // Send end event
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
-              type: "end",
+              type: 'end',
               messageId,
               metadata: {
                 tokenCount,
                 processingTime,
-                modelUsed: "qwen-turbo",
+                modelUsed: 'qwen-turbo',
                 sourcesFound: relevantDocs.length,
               },
             })}\n\n`
@@ -251,14 +311,14 @@ export async function POST(req: NextRequest) {
 
         controller.close();
       } catch (error) {
-        console.error("[Chat API] Error:", error);
+        console.error('[Chat API] Error:', error);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
-              type: "error",
+              type: 'error',
               error: {
-                code: "AI_SERVICE_ERROR",
-                message: error instanceof Error ? error.message : "对话服务暂时不可用",
+                code: 'AI_SERVICE_ERROR',
+                message: error instanceof Error ? error.message : '对话服务暂时不可用',
               },
             })}\n\n`
           )
@@ -270,9 +330,9 @@ export async function POST(req: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     },
   });
 }

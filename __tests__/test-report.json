@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-03-09T08:42:36.979Z",
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "duration": 2041
+  },
+  "results": [
+    {
+      "file": "Unit Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Data Isolation Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Quota System Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Guest Quota Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Guest Isolation Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Pinecone Isolation Tests",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    },
+    {
+      "file": "Quota Enforcement E2E",
+      "status": "fail",
+      "duration": 0,
+      "tests": 0,
+      "failures": 0
+    }
+  ],
+  "details": {
+    "dataIsolation": {
+      "postgresqlRLS": [
+        "User can only view their own PDFs",
+        "User cannot view other users PDFs",
+        "User cannot insert PDFs for other users",
+        "User cannot delete other users PDFs",
+        "User cannot update other users PDFs",
+        "SQL injection cannot bypass RLS"
+      ],
+      "pineconeNamespace": [
+        "PDFs are stored in correct user namespaces",
+        "User can only query their own namespace",
+        "Different users have different namespaces",
+        "Namespace filter enforces user isolation",
+        "Combined userId and pdfId filter works correctly",
+        "Deleting from one namespace does not affect others"
+      ],
+      "crossUserAccess": [
+        "Users cannot access data from other namespaces",
+        "Cross-namespace search returns no results",
+        "Default namespace is separate from user namespaces"
+      ]
+    },
+    "guestQuota": {
+      "deviceFingerprinting": [
+        "Unique fingerprints for different devices",
+        "Same device maintains consistent fingerprint",
+        "Fingerprint includes IP and User-Agent"
+      ],
+      "quotaLimitEnforcement": [
+        "Guest allowed when under limit (0-2 uses)",
+        "Guest blocked when at limit (3 uses)",
+        "Guest remaining quota calculated correctly",
+        "Guest usage increments on upload"
+      ],
+      "dataIsolation": [
+        "Different guests cannot access each other data",
+        "Guest data marked as migrated after registration",
+        "Migrated guest data not migrated again",
+        "Guest data can be cleaned up"
+      ]
+    },
+    "quotaSystem": {
+      "uploadQuota": [
+        "Default quota definitions exist",
+        "User starts with zero usage",
+        "Upload usage is recorded correctly",
+        "Multiple uploads increment usage correctly",
+        "Quota enforcement at API level"
+      ],
+      "chatQuota": [
+        "Chat usage is recorded correctly",
+        "Chat respects daily quota limit",
+        "Chat quota check before processing"
+      ],
+      "quotaStatistics": [
+        "User can view their own quota stats",
+        "Quota stats reflect actual usage",
+        "Quota stats API returns correct format"
+      ],
+      "quotaReset": [
+        "Daily quotas reset correctly",
+        "Quota reset at day boundary"
+      ]
+    }
+  }
+}
