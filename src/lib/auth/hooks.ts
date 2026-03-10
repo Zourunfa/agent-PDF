@@ -40,22 +40,23 @@ export function useAuth() {
         } = await supabase.auth.getSession();
 
         if (session?.user) {
-          setState({
+          setState((prev) => ({
+            ...prev,
             user: session.user,
-            profile: null, // TODO: 从 API 获取 profile
             loading: false,
-            error: null,
-          });
+          }));
 
           // 获取用户 profile
           try {
             const response = await fetch('/api/auth/me');
             if (response.ok) {
               const data = await response.json();
-              setState((prev) => ({
-                ...prev,
-                profile: data.user,
-              }));
+              if (data.success && data.user) {
+                setState((prev) => ({
+                  ...prev,
+                  profile: data.user,
+                }));
+              }
             }
           } catch (error) {
             console.error('Error fetching profile:', error);
@@ -69,6 +70,7 @@ export function useAuth() {
           });
         }
       } catch (error) {
+        console.error('Error getting session:', error);
         setState({
           user: null,
           profile: null,
@@ -85,22 +87,23 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setState({
+        setState((prev) => ({
+          ...prev,
           user: session.user,
-          profile: null,
           loading: false,
-          error: null,
-        });
+        }));
 
         // 获取用户 profile
         try {
           const response = await fetch('/api/auth/me');
           if (response.ok) {
             const data = await response.json();
-            setState((prev) => ({
-              ...prev,
-              profile: data.user,
-            }));
+            if (data.success && data.user) {
+              setState((prev) => ({
+                ...prev,
+                profile: data.user,
+              }));
+            }
           }
         } catch (error) {
           console.error('Error fetching profile:', error);

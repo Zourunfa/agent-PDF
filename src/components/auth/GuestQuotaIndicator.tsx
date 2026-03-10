@@ -3,10 +3,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Gift } from 'lucide-react';
+import { Tag, Button, Space, Spin } from 'antd';
+import { GiftOutlined } from '@ant-design/icons';
 
 interface GuestQuota {
   remaining: number;
@@ -38,54 +36,44 @@ export function GuestQuotaIndicator() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="animate-pulse flex items-center gap-2">
-        <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
-      </div>
-    );
+    return <Spin size="small" />;
   }
 
   if (!quota) {
     return null;
   }
 
-  const percentage = (quota.remaining / quota.limit) * 100;
-  const variant =
-    quota.remaining > 1 ? 'default' : quota.remaining === 1 ? 'secondary' : 'destructive';
-
-  const variantStyles = {
-    default: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-    secondary: 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100',
-    destructive: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
-  };
+  // 根据剩余次数确定颜色
+  let color = 'blue';
+  if (quota.remaining === 0) {
+    color = 'red';
+  } else if (quota.remaining === 1) {
+    color = 'orange';
+  }
 
   if (quota.remaining === 0) {
     return (
-      <Badge className={variantStyles[variant]} variant="outline">
-        <Gift className="h-3 w-3 mr-1" />
-        <span>已达体验上限</span>
-        <Link href="/register">
-          <Button size="sm" variant="ghost" className="ml-2 h-6 text-xs">
-            注册账户
-          </Button>
-        </Link>
-      </Badge>
+      <Space size={8}>
+        <Tag icon={<GiftOutlined />} color={color}>
+          已达体验上限
+        </Tag>
+        <Button type="primary" size="small">
+          <Link href="/register">注册账户</Link>
+        </Button>
+      </Space>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Badge className={variantStyles[variant]} variant="outline">
-        <Gift className="h-3 w-3 mr-1" />
-        <span>剩余 {quota.remaining} 次免费体验</span>
-      </Badge>
+    <Space size={8}>
+      <Tag icon={<GiftOutlined />} color={color}>
+        剩余 {quota.remaining} 次免费体验
+      </Tag>
       {quota.remaining <= 1 && (
-        <Link href="/register">
-          <Button size="sm" variant="ghost" className="h-7 text-xs">
-            注册账户
-          </Button>
-        </Link>
+        <Button type="primary" size="small">
+          <Link href="/register">注册账户</Link>
+        </Button>
       )}
-    </div>
+    </Space>
   );
 }

@@ -33,6 +33,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      console.error('Login error details:', error);
+
+      // 特殊处理邮箱未验证的情况
+      if (error.code === 'email_not_confirmed' || error.message.includes('Email not confirmed')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'EMAIL_NOT_VERIFIED',
+            message: '请先验证您的邮箱。检查您的收件箱并点击验证链接',
+            requireVerification: true,
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
@@ -91,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // TODO: 发送新设备登录通知（如果检测到新设备）
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: data.user.id,
@@ -106,6 +121,8 @@ export async function POST(request: NextRequest) {
         expiresAt: data.session.expires_at,
       },
     });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
 
