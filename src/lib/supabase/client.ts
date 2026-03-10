@@ -10,6 +10,3 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
-
-// 导出单例客户端
-export const supabase = createClient();

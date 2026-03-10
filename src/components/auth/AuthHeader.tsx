@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth/hooks';
 import { createClient } from '@/lib/supabase/client';
 import { GuestQuotaIndicator } from './GuestQuotaIndicator';
-import { Layout, Button, Dropdown, Space, Avatar, Spin, Tooltip } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Button, Dropdown, Space, Avatar, Spin, Tooltip, Divider } from 'antd';
+import { UserOutlined, LogoutOutlined, SettingOutlined, HomeOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
 const { Header } = Layout;
@@ -37,6 +37,12 @@ export function AuthHeader() {
 
   // 用户菜单项
   const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'home',
+      icon: <HomeOutlined />,
+      label: '首页',
+      onClick: () => router.push('/'),
+    },
     {
       key: 'profile',
       icon: <UserOutlined />,
@@ -68,58 +74,74 @@ export function AuthHeader() {
   return (
     <Header
       style={{
-        background: '#fff',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        padding: '0 24px',
+        background: 'linear-gradient(90deg, #ffffff 0%, #fafbfc 100%)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(99, 102, 241, 0.06)',
+        padding: '0 32px',
         position: 'sticky',
         top: 0,
         zIndex: 999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        height: 64,
+        borderBottom: '1px solid rgba(99, 102, 241, 0.08)',
       }}
     >
       {/* 左侧 - Logo 和标题 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          cursor: 'pointer',
+          transition: 'opacity 0.2s',
+        }}
+        onClick={() => router.push('/')}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+      >
+        {/* Logo */}
         <div
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 8,
+            width: 44,
+            height: 44,
+            borderRadius: 10,
             background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#fff',
-            fontSize: 18,
-            fontWeight: 700,
-            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-            cursor: 'pointer',
+            fontSize: 20,
+            fontWeight: 800,
+            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.25)',
+            flexShrink: 0,
           }}
-          onClick={() => router.push('/')}
         >
           PDF
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => router.push('/')}>
+
+        {/* 标题和描述 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div
             style={{
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: 700,
               background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.5px',
             }}
           >
             PDF AI Chat
           </div>
-          <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: '#999', fontWeight: 500, letterSpacing: '0.3px' }}>
             智能文档分析助手
           </div>
         </div>
       </div>
 
       {/* 右侧 - 配额、登录/注册 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
         {loading ? (
           <Spin size="small" />
         ) : isAuthenticated ? (
@@ -127,38 +149,46 @@ export function AuthHeader() {
             {/* 游客配额提示 */}
             {!user && <GuestQuotaIndicator />}
 
+            {/* 分割线 */}
+            <Divider type="vertical" style={{ height: 24, margin: 0 }} />
+
             {/* 用户菜单 */}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '4px 12px',
+                  gap: 10,
+                  padding: '6px 12px',
                   cursor: 'pointer',
-                  borderRadius: 6,
-                  transition: 'background-color 0.2s',
+                  borderRadius: 8,
+                  transition: 'all 0.2s',
+                  border: '1px solid transparent',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5';
+                  e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = 'transparent';
                 }}
               >
                 <Tooltip title={profile?.name || user?.email}>
                   <Avatar
-                    size={32}
+                    size={36}
                     style={{
                       background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
                       cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: 14,
                     }}
                   >
                     {profile?.name?.[0]?.toUpperCase() ||
                       user?.email?.[0]?.toUpperCase()}
                   </Avatar>
                 </Tooltip>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#333', minWidth: 80 }}>
                   {profile?.name || user?.email?.split('@')[0]}
                 </span>
               </div>
@@ -170,8 +200,16 @@ export function AuthHeader() {
             <GuestQuotaIndicator />
 
             {/* 登录/注册按钮 */}
-            <Space size={8}>
-              <Button type="default" size="middle">
+            <Space size={10}>
+              <Button
+                type="text"
+                size="middle"
+                style={{
+                  color: '#666',
+                  fontWeight: 500,
+                  borderRadius: 6,
+                }}
+              >
                 <Link href="/login">登录</Link>
               </Button>
               <Button
@@ -180,6 +218,9 @@ export function AuthHeader() {
                 style={{
                   background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
                   borderColor: 'transparent',
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
                 }}
               >
                 <Link href="/register">注册</Link>

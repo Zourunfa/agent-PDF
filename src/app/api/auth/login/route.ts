@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: {
+        // 设置 session 过期时间（记住我 = 30 天，否则 7 天）
+        expiresIn: rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60,
+      },
     });
 
     if (error) {
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!data.user) {
+    if (!data.user || !data.session) {
       return NextResponse.json(
         {
           success: false,
@@ -104,8 +108,8 @@ export async function POST(request: NextRequest) {
       console.error('Error logging login event:', logError);
     }
 
-    // TODO: 发送新设备登录通知（如果检测到新设备）
-
+    // 创建响应并设置 session cookies
+    // Supabase SSR 客户端会自动处理 cookies 的设置
     const response = NextResponse.json({
       success: true,
       user: {
@@ -116,11 +120,11 @@ export async function POST(request: NextRequest) {
         avatar: profile?.avatar_url,
         emailVerified: data.user.email_confirmed_at != null,
       },
-      session: {
-        accessToken: data.session.access_token,
-        expiresAt: data.session.expires_at,
-      },
+      message: '登录成功',
     });
+
+    // 重要：Supabase SSR 客户端已经通过 createClient() 中的 cookies 设置
+    // 自动将 session 信息写入 cookies，这里不需要手动设置
 
     return response;
   } catch (error) {

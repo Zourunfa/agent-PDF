@@ -13,6 +13,13 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    // Debug: Log all cookies from request
+    const allCookies = req.cookies.getAll();
+    console.log(
+      '[Quota Stats] Request cookies:',
+      allCookies.map((c) => ({ name: c.name, hasValue: !!c.value }))
+    );
+
     // 获取用户信息
     const user = await getCurrentUser();
 
