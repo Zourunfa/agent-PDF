@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { UserCenterLayout } from '@/components/user/UserCenterLayout';
 import { PasswordChange } from '@/components/user/PasswordChangeNew';
+import { PasswordChangeSkeleton } from '@/components/user/Skeleton';
+import { ErrorBoundary } from '@/components/user/ErrorBoundary';
 
 export default function ChangePasswordPage() {
   const { user, loading } = useAuth();
@@ -24,9 +26,9 @@ export default function ChangePasswordPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 64px)' }}>
-        加载中...
-      </div>
+      <UserCenterLayout>
+        <PasswordChangeSkeleton />
+      </UserCenterLayout>
     );
   }
 
@@ -36,7 +38,11 @@ export default function ChangePasswordPage() {
 
   return (
     <UserCenterLayout>
-      <PasswordChange />
+      <ErrorBoundary>
+        <div className="page-enter">
+          <PasswordChange />
+        </div>
+      </ErrorBoundary>
     </UserCenterLayout>
   );
 }

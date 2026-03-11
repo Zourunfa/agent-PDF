@@ -2,10 +2,10 @@
  * Chat Context Provider
  */
 
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useCallback } from "react";
-import { ChatMessage, MessageRole } from "@/types/chat";
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { ChatMessage, MessageRole } from '@/types/chat';
 
 interface ChatContextType {
   conversations: Map<string, ChatMessage[]>;
@@ -14,6 +14,7 @@ interface ChatContextType {
 
   // Actions
   addMessage: (conversationId: string, message: ChatMessage) => void;
+  loadMessages: (conversationId: string, messages: ChatMessage[]) => void;
   clearConversation: (conversationId: string) => void;
   setActiveConversation: (conversationId: string | null) => void;
   setStreaming: (isStreaming: boolean) => void;
@@ -25,7 +26,7 @@ const ChatContext = createContext<ChatContextType | null>(null);
 export function useChat() {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error("useChat must be used within ChatProvider");
+    throw new Error('useChat must be used within ChatProvider');
   }
   return context;
 }
@@ -44,6 +45,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
       const messages = prev.get(conversationId) || [];
       return new Map(prev).set(conversationId, [...messages, message]);
     });
+  }, []);
+
+  const loadMessages = useCallback((conversationId: string, messages: ChatMessage[]) => {
+    setConversations((prev) => new Map(prev).set(conversationId, messages));
   }, []);
 
   const clearConversation = useCallback((conversationId: string) => {
@@ -85,6 +90,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     activeConversationId,
     isStreaming,
     addMessage,
+    loadMessages,
     clearConversation,
     setActiveConversation,
     setStreaming,

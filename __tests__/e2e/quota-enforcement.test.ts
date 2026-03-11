@@ -50,7 +50,7 @@ describe('Quota Enforcement E2E Tests', () => {
     const { data: quotaDef } = await adminClient
       .from('quota_definitions')
       .select('id')
-      .eq('name', 'pdf_upload_daily')
+      .eq('name', 'pdf_uploads_daily')
       .single();
 
     if (quotaDef) {
@@ -189,17 +189,26 @@ describe('Quota Enforcement E2E Tests', () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data: usage } = await adminClient
-        .from('quota_usage')
-        .select('amount')
-        .eq('user_id', testUserId)
-        .gte('created_at', today.toISOString());
+      const { data: quotaDef } = await adminClient
+        .from('quota_definitions')
+        .select('id')
+        .eq('name', 'pdf_uploads_daily')
+        .single();
 
-      const totalUsage = usage?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+      if (quotaDef) {
+        const { data: usage } = await adminClient
+          .from('quota_usage')
+          .select('usage_count')
+          .eq('user_id', testUserId)
+          .eq('quota_id', quotaDef.id)
+          .eq('usage_date', today.toISOString().split('T')[0]);
 
-      expect(totalUsage).toBe(3);
+        const totalUsage = usage?.reduce((sum, record) => sum + (record.usage_count || 0), 0) || 0;
 
-      console.log(`✓ Quota usage tracked correctly: ${totalUsage}/3`);
+        expect(totalUsage).toBe(3);
+
+        console.log(`✓ Quota usage tracked correctly: ${totalUsage}/3`);
+      }
     });
   });
 
@@ -209,12 +218,20 @@ describe('Quota Enforcement E2E Tests', () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      await adminClient
-        .from('quota_usage')
-        .delete()
-        .eq('user_id', testUserId)
-        .eq('quota_type', 'pdf_chat_daily')
-        .gte('created_at', today.toISOString());
+      const { data: chatQuotaDef } = await adminClient
+        .from('quota_definitions')
+        .select('id')
+        .eq('name', 'ai_calls_daily')
+        .single();
+
+      if (chatQuotaDef) {
+        await adminClient
+          .from('quota_usage')
+          .delete()
+          .eq('user_id', testUserId)
+          .eq('quota_id', chatQuotaDef.id)
+          .gte('usage_date', today.toISOString().split('T')[0]);
+      }
     });
 
     test('Chat respects daily quota limit', async () => {
@@ -222,7 +239,7 @@ describe('Quota Enforcement E2E Tests', () => {
       const { data: chatQuotaDef } = await adminClient
         .from('quota_definitions')
         .select('id')
-        .eq('name', 'pdf_chat_daily')
+        .eq('name', 'ai_calls_daily')
         .single();
 
       if (chatQuotaDef) {
@@ -318,28 +335,37 @@ describe('Quota Enforcement E2E Tests', () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Get upload usage from DB
-      const { data: uploadUsage } = await adminClient
-        .from('quota_usage')
-        .select('amount')
-        .eq('user_id', testUserId)
-        .gte('created_at', today.toISOString());
+      const { data: quotaDef } = await adminClient
+        .from('quota_definitions')
+        .select('id')
+        .eq('name', 'pdf_uploads_daily')
+        .single();
 
-      const dbUploadUsage = uploadUsage?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+      if (quotaDef) {
+        // Get upload usage from DB
+        const { data: uploadUsage } = await adminClient
+          .from('quota_usage')
+          .select('usage_count')
+          .eq('user_id', testUserId)
+          .eq('quota_id', quotaDef.id)
+          .eq('usage_date', today.toISOString().split('T')[0]);
 
-      // Get from API
-      const response = await fetch(`${appUrl}/api/quota/stats`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+        const dbUploadUsage = uploadUsage?.reduce((sum, r) => sum + (r.usage_count || 0), 0) || 0;
 
-      const data = await response.json();
+        // Get from API
+        const response = await fetch(`${appUrl}/api/quota/stats`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
 
-      expect(data.upload.used).toBe(dbUploadUsage);
+        const data = await response.json();
 
-      console.log(`✓ API stats match DB usage: ${dbUploadUsage}`);
+        expect(data.upload.used).toBe(dbUploadUsage);
+
+        console.log(`✓ API stats match DB usage: ${dbUploadUsage}`);
+      }
     });
   });
 
@@ -354,7 +380,7 @@ describe('Quota Enforcement E2E Tests', () => {
       const { data: quotaDef } = await adminClient
         .from('quota_definitions')
         .select('id')
-        .eq('name', 'pdf_upload_daily')
+        .eq('name', 'pdf_uploads_daily')
         .single();
 
       if (quotaDef) {
@@ -364,8 +390,6 @@ describe('Quota Enforcement E2E Tests', () => {
           quota_id: quotaDef.id,
           usage_date: yesterday.toISOString().split('T')[0],
           usage_count: 5,
-          amount: 5,
-          created_at: yesterday.toISOString(),
         });
 
         console.log('✓ Created yesterday usage record');
@@ -376,11 +400,12 @@ describe('Quota Enforcement E2E Tests', () => {
 
         const { data: todayUsage } = await adminClient
           .from('quota_usage')
-          .select('amount')
+          .select('usage_count')
           .eq('user_id', testUserId)
-          .gte('created_at', today.toISOString());
+          .eq('quota_id', quotaDef.id)
+          .eq('usage_date', today.toISOString().split('T')[0]);
 
-        const todayTotal = todayUsage?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+        const todayTotal = todayUsage?.reduce((sum, r) => sum + (r.usage_count || 0), 0) || 0;
 
         console.log('✓ Quota reset logic validated');
         console.log(`  - Yesterday: 5 uploads`);

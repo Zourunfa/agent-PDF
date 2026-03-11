@@ -148,17 +148,24 @@ describe('Quota Check Unit Tests', () => {
     it('should successfully record quota usage', async () => {
       const mockInsert = jest.fn().mockResolvedValue({ error: null });
       mockSupabase.from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: { id: 'quota-123' },
+              error: null,
+            }),
+          }),
+        }),
         insert: mockInsert,
       });
 
-      await recordQuotaUsage(mockUserId, 'pdf_upload_daily', 1, 'test-pdf-123');
+      await recordQuotaUsage(mockUserId, 'pdf_uploads_daily', 1, 'test-pdf-123');
 
       expect(mockInsert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: mockUserId,
-          quota_type: 'pdf_upload_daily',
-          amount: 1,
-          resource_id: 'test-pdf-123',
+          quota_id: 'quota-123',
+          usage_count: 1,
         })
       );
     });
@@ -168,11 +175,19 @@ describe('Quota Check Unit Tests', () => {
         error: { message: 'Database error' },
       });
       mockSupabase.from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: { id: 'quota-123' },
+              error: null,
+            }),
+          }),
+        }),
         insert: mockInsert,
       });
 
       // Should not throw, just log error
-      await expect(recordQuotaUsage(mockUserId, 'pdf_upload_daily', 1)).resolves.not.toThrow();
+      await expect(recordQuotaUsage(mockUserId, 'pdf_uploads_daily', 1)).resolves.not.toThrow();
     });
   });
 
@@ -244,16 +259,16 @@ describe('Quota Check Unit Tests', () => {
   });
 
   describe('Quota types', () => {
-    it('should support pdf_upload_daily quota type', async () => {
-      const quotaType = 'pdf_upload_daily';
+    it('should support pdf_uploads_daily quota type', async () => {
+      const quotaType = 'pdf_uploads_daily';
 
-      expect(quotaType).toBe('pdf_upload_daily');
+      expect(quotaType).toBe('pdf_uploads_daily');
     });
 
-    it('should support pdf_chat_daily quota type', async () => {
-      const quotaType = 'pdf_chat_daily';
+    it('should support ai_calls_daily quota type', async () => {
+      const quotaType = 'ai_calls_daily';
 
-      expect(quotaType).toBe('pdf_chat_daily');
+      expect(quotaType).toBe('ai_calls_daily');
     });
   });
 

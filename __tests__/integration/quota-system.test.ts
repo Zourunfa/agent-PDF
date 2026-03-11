@@ -200,7 +200,6 @@ describe('Quota System Tests', () => {
         quota_id: quotaDef!.id,
         usage_date: new Date().toISOString().split('T')[0],
         usage_count: 1,
-        amount: 1,
       });
 
       expect(insertError).toBeNull();
@@ -238,7 +237,6 @@ describe('Quota System Tests', () => {
           quota_id: quotaDef!.id,
           usage_date: new Date().toISOString().split('T')[0],
           usage_count: 1,
-          amount: 1,
         });
       }
 
@@ -248,11 +246,12 @@ describe('Quota System Tests', () => {
 
       const { data: usage } = await adminClient
         .from('quota_usage')
-        .select('amount')
+        .select('usage_count')
         .eq('user_id', createdUser!.id)
-        .gte('created_at', today.toISOString());
+        .eq('quota_id', quotaDef!.id)
+        .eq('usage_date', today.toISOString().split('T')[0]);
 
-      const totalUsage = usage?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+      const totalUsage = usage?.reduce((sum, record) => sum + (record.usage_count || 0), 0) || 0;
 
       expect(totalUsage).toBe(uploadCount);
 
@@ -279,7 +278,6 @@ describe('Quota System Tests', () => {
         quota_id: quotaDef!.id,
         usage_date: new Date().toISOString().split('T')[0],
         usage_count: 1,
-        amount: 1,
       });
 
       expect(insertError).toBeNull();
@@ -363,17 +361,16 @@ describe('Quota System Tests', () => {
           quota_id: quotaDef.id,
           usage_date: yesterdayStr,
           usage_count: 5,
-          amount: 5,
         });
 
         // Query today's usage (should be 0 or different from yesterday)
         const { data: todayUsage } = await adminClient
           .from('quota_usage')
-          .select('amount')
+          .select('usage_count')
           .eq('user_id', createdUser.id)
           .eq('usage_date', todayStr);
 
-        const todayTotal = todayUsage?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
+        const todayTotal = todayUsage?.reduce((sum, r) => sum + (r.usage_count || 0), 0) || 0;
 
         console.log('✓ Daily quota reset logic validated');
         console.log(`  - Yesterday usage: 5`);

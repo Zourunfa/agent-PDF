@@ -10,6 +10,8 @@ interface ApiRequestOptions {
   headers?: Record<string, string>;
   body?: any;
   skipAuthRedirect?: boolean; // 跳过自动跳转登录
+  retries?: number; // 重试次数（默认 0）
+  retryDelay?: number; // 重试延迟（毫秒，默认 1000）
 }
 
 interface ApiResponse<T = any> {
@@ -27,7 +29,14 @@ interface ApiResponse<T = any> {
  * @returns Promise<Response>
  */
 export async function apiFetch(url: string, options: ApiRequestOptions = {}): Promise<Response> {
-  const { method = 'GET', headers = {}, body, skipAuthRedirect = false } = options;
+  const {
+    method = 'GET',
+    headers = {},
+    body,
+    skipAuthRedirect = false,
+    retries = 0,
+    retryDelay = 1000,
+  } = options;
 
   // 默认 headers（FormData 除外）
   const isFormData = body instanceof FormData;
@@ -61,43 +70,63 @@ export async function apiFetch(url: string, options: ApiRequestOptions = {}): Pr
     }
   }
 
-  try {
-    const response = await fetch(url, requestConfig);
+  let lastError: Error | null = null;
 
-    // 检查是否是 401/403 错误（未登录或无权限）
-    if (!skipAuthRedirect && (response.status === 401 || response.status === 403)) {
-      // 尝试读取错误消息
-      let errorMessage = '请先登录';
-      try {
-        const data = await response.json();
-        if (data.message) {
-          errorMessage = data.message;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, requestConfig);
+
+      // 检查是否是 401/403 错误（未登录或无权限）
+      if (!skipAuthRedirect && (response.status === 401 || response.status === 403)) {
+        // 尝试读取错误消息
+        let errorMessage = '请先登录';
+        try {
+          const data = await response.json();
+          if (data.message) {
+            errorMessage = data.message;
+          }
+        } catch {
+          // 忽略 JSON 解析错误
         }
-      } catch {
-        // 忽略 JSON 解析错误
+
+        // 保存当前页面路径，登录后返回
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/login' && currentPath !== '/register') {
+            sessionStorage.setItem('returnAfterLogin', currentPath);
+          }
+
+          // 跳转到登录页
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      // 保存当前页面路径，登录后返回
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/register') {
-        sessionStorage.setItem('returnAfterLogin', currentPath);
+      return response;
+    } catch (error: any) {
+      lastError = error;
+
+      // 如果是我们主动抛出的错误（401/403），不重试
+      if (error.message === '请先登录' || error.message?.includes('请先验证您的邮箱')) {
+        throw error;
       }
 
-      // 跳转到登录页
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-      throw new Error(errorMessage);
-    }
+      // 网络错误或服务器错误，可以重试
+      // 如果还有重试次数，等待一段时间后重试
+      if (attempt < retries) {
+        // 指数退避：每次重试等待时间是上次的 2 倍
+        const delay = retryDelay * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
 
-    return response;
-  } catch (error: any) {
-    // 如果是我们主动抛出的错误，重新抛出
-    if (error.message === '请先登录' || error.message?.includes('请先验证您的邮箱')) {
+      // 重试次数用完，抛出最后的错误
       throw error;
     }
-
-    // 其他错误也重新抛出
-    throw error;
   }
+
+  // 如果所有重试都失败，抛出最后的错误
+  throw lastError || new Error('请求失败');
 }
 
 /**

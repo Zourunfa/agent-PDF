@@ -2,29 +2,193 @@
  * PDF List Component - Ant Design Modern
  */
 
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Typography, Tag, Button, Space, Empty } from "antd";
-import { FileTextOutlined, DeleteOutlined, LoadingOutlined, CheckCircleOutlined, ExclamationCircleOutlined, EditOutlined } from "@ant-design/icons";
-import { usePDF } from "@/contexts/PDFContext";
-import { ParseStatus } from "@/types/pdf";
-import { ManualTextInput } from "./ManualTextInput";
+import React, { useState, useEffect } from 'react';
+import { Typography, Tag, Button, Space, Empty, Spin, Modal, message } from 'antd';
+import {
+  FileTextOutlined,
+  DeleteOutlined,
+  LoadingOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  EditOutlined,
+} from '@ant-design/icons';
+import { usePDF } from '@/contexts/PDFContext';
+import { ParseStatus } from '@/types/pdf';
+import { ManualTextInput } from './ManualTextInput';
 
 const { Text } = Typography;
+
+interface PDFListItem {
+  id: string;
+  filename: string;
+  fileSize: number;
+  pageCount: number | null;
+  parseStatus: 'pending' | 'parsing' | 'completed' | 'failed';
+  uploadedAt: string;
+  conversationCount: number;
+  lastConversationAt: string | null;
+}
 
 export function PDFList() {
   const { pdfs, activePdfId, setActivePdf, removePDF } = usePDF();
   const [manualInputVisible, setManualInputVisible] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<{ id: string; fileName: string } | null>(null);
+  const [apiPdfs, setApiPdfs] = useState<PDFListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const pdfList = Array.from(pdfs.values());
+  // 从 API 获取 PDF 列表
+  useEffect(() => {
+    const fetchPDFList = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('[PDFList] 正在获取 PDF 列表...');
+
+        const response = await fetch(
+          '/api/pdfs/list?limit=50&offset=0&sortBy=uploadedAt&sortOrder=desc'
+        );
+
+        if (!response.ok) {
+          throw new Error(`API 错误: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data.pdfs) {
+          console.log('[PDFList] 获取到', data.data.pdfs.length, '个 PDF');
+          setApiPdfs(data.data.pdfs);
+        } else {
+          console.warn('[PDFList] API 返回异常:', data);
+          setError('获取 PDF 列表失败');
+        }
+      } catch (err) {
+        console.error('[PDFList] 获取 PDF 列表出错:', err);
+        setError(err instanceof Error ? err.message : '获取 PDF 列表失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPDFList();
+  }, []);
+
+  // 刷新 PDF 列表
+  const refreshPDFList = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        '/api/pdfs/list?limit=50&offset=0&sortBy=uploadedAt&sortOrder=desc'
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.pdfs) {
+          setApiPdfs(data.data.pdfs);
+        }
+      }
+    } catch (err) {
+      console.error('[PDFList] 刷新列表失败:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 处理删除 PDF
+  const handleDeletePDF = (pdf: { id: string; fileName: string }) => {
+    Modal.confirm({
+      title: '确认删除',
+      content: (
+        <div>
+          <p>
+            确定要删除文档 <strong>"{pdf.fileName}"</strong> 吗？
+          </p>
+          <p style={{ color: '#ff4d4f', fontSize: 12, marginTop: 8 }}>
+            此操作将同时删除该文档的所有对话记录，且无法恢复。
+          </p>
+        </div>
+      ),
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      centered: true,
+      onOk: async () => {
+        try {
+          setDeletingId(pdf.id);
+          await removePDF(pdf.id);
+          message.success('文档已删除');
+          // 从 API 列表中移除已删除的 PDF
+          setApiPdfs((prev) => prev.filter((p) => p.id !== pdf.id));
+        } catch (error) {
+          console.error('[PDFList] 删除失败:', error);
+          message.error(error instanceof Error ? error.message : '删除失败，请重试');
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
+  };
+
+  // 从 API 获取 PDF 列表
+  useEffect(() => {
+    const fetchPDFList = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('[PDFList] 正在获取 PDF 列表...');
+
+        const response = await fetch(
+          '/api/pdfs/list?limit=50&offset=0&sortBy=uploadedAt&sortOrder=desc'
+        );
+
+        if (!response.ok) {
+          throw new Error(`API 错误: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data.pdfs) {
+          console.log('[PDFList] 获取到', data.data.pdfs.length, '个 PDF');
+          setApiPdfs(data.data.pdfs);
+        } else {
+          console.warn('[PDFList] API 返回异常:', data);
+          setError('获取 PDF 列表失败');
+        }
+      } catch (err) {
+        console.error('[PDFList] 获取 PDF 列表出错:', err);
+        setError(err instanceof Error ? err.message : '获取 PDF 列表失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPDFList();
+  }, []);
+
+  // 优先使用 API 数据，如果没有则使用本地 Context 数据
+  const pdfList =
+    apiPdfs.length > 0
+      ? apiPdfs.map((pdf) => ({
+          id: pdf.id,
+          fileName: pdf.filename,
+          fileSize: pdf.fileSize,
+          pageCount: pdf.pageCount,
+          parseStatus: pdf.parseStatus as ParseStatus,
+          uploadedAt: pdf.uploadedAt,
+          conversationCount: pdf.conversationCount,
+          lastConversationAt: pdf.lastConversationAt,
+        }))
+      : Array.from(pdfs.values());
 
   if (pdfList.length === 0) {
     return (
       <Empty
         image={Empty.PRESENTED_IMAGE_SIMPLE}
-        description="暂无文档"
+        description={loading ? '加载中...' : error ? `错误: ${error}` : '暂无文档'}
         style={{ padding: '24px 0' }}
       />
     );
@@ -53,7 +217,7 @@ export function PDFList() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                position: 'relative'
+                position: 'relative',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
@@ -68,16 +232,18 @@ export function PDFList() {
             >
               {/* Active indicator */}
               {isActive && (
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: 3,
-                  height: 32,
-                  background: 'linear-gradient(180deg, #6366F1 0%, #8B5CF6 100%)',
-                  borderRadius: '0 4px 4px 0'
-                }} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 3,
+                    height: 32,
+                    background: 'linear-gradient(180deg, #6366F1 0%, #8B5CF6 100%)',
+                    borderRadius: '0 4px 4px 0',
+                  }}
+                />
               )}
 
               {/* Icon */}
@@ -102,7 +268,7 @@ export function PDFList() {
                     fontSize: 13,
                     color: isActive ? '#6366F1' : '#1E1B4B',
                     display: 'block',
-                    fontWeight: isActive ? 600 : 400
+                    fontWeight: isActive ? 600 : 400,
                   }}
                 >
                   {pdf.fileName}
@@ -133,14 +299,7 @@ export function PDFList() {
               </div>
 
               {/* Actions */}
-              <Space size={4} style={{ flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0';
-                }}
-              >
+              <Space size={4} style={{ flexShrink: 0 }}>
                 {isFailed && (
                   <Button
                     type="primary"
@@ -156,7 +315,7 @@ export function PDFList() {
                       height: 28,
                       background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
                       borderColor: 'transparent',
-                      borderRadius: 6
+                      borderRadius: 6,
                     }}
                   >
                     手动输入
@@ -166,12 +325,15 @@ export function PDFList() {
                   type="text"
                   danger
                   size="small"
-                  icon={<DeleteOutlined />}
+                  icon={deletingId === pdf.id ? <LoadingOutlined /> : <DeleteOutlined />}
                   onClick={(e) => {
                     e.stopPropagation();
-                    removePDF(pdf.id);
+                    handleDeletePDF({ id: pdf.id, fileName: pdf.fileName });
                   }}
+                  loading={deletingId === pdf.id}
+                  disabled={deletingId !== null}
                   style={{ borderRadius: 6 }}
+                  title="删除文档"
                 />
               </Space>
             </div>

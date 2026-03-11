@@ -267,11 +267,13 @@ export async function POST(req: NextRequest) {
         const response = await chatModel.stream([systemMessage, userMessage]);
 
         let tokenCount = 0;
+        let fullResponse = '';
 
-        // Stream tokens
+        // Stream tokens and collect full response
         for await (const token of response) {
           const content = token.content as string;
           if (content) {
+            fullResponse += content;
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
@@ -288,9 +290,43 @@ export async function POST(req: NextRequest) {
         const processingTime = Date.now() - startTime;
         console.log(`[Chat API] Response completed: ${tokenCount} tokens in ${processingTime}ms`);
 
-        // 记录用户配额使用（仅登录用户）
+        // 记录用户配额使用和保存对话（仅登录用户）
         if (userId) {
-          await recordQuotaUsage(userId, 'pdf_chat_daily', 1, pdfId);
+          await recordQuotaUsage(userId, 'ai_calls_daily', 1, pdfId);
+
+          // Save conversation messages
+          try {
+            const { saveConversationExchange } = await import(
+              '@/lib/chat/save-conversation'
+            );
+            const { createOrGetConversation } = await import(
+              '@/lib/pdf/save-pdf-info'
+            );
+
+            // Get or create conversation
+            const conversationId = await createOrGetConversation({
+              pdfId,
+              userId,
+            });
+
+            console.log(`[Chat API] Saving conversation messages...`);
+            
+            // Save the user question and AI response
+            await saveConversationExchange(
+              conversationId,
+              pdfId,
+              userId,
+              question,
+              fullResponse,
+              tokenCount,
+              processingTime
+            );
+
+            console.log(`[Chat API] ✅ Conversation messages saved successfully`);
+          } catch (error) {
+            console.error(`[Chat API] Error saving conversation:`, error);
+            // Don't fail the request if conversation saving fails
+          }
         }
 
         // Send end event

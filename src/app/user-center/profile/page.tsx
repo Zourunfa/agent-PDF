@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { UserCenterLayout } from '@/components/user/UserCenterLayout';
 import { UserProfile } from '@/components/user/UserProfile';
+import { UserProfileSkeleton } from '@/components/user/Skeleton';
+import { ErrorBoundary } from '@/components/user/ErrorBoundary';
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
@@ -24,9 +26,9 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 64px)' }}>
-          加载中...
-      </div>
+      <UserCenterLayout>
+        <UserProfileSkeleton />
+      </UserCenterLayout>
     );
   }
 
@@ -36,7 +38,11 @@ export default function ProfilePage() {
 
   return (
     <UserCenterLayout>
-      <UserProfile />
+      <ErrorBoundary>
+        <div className="page-enter">
+          <UserProfile />
+        </div>
+      </ErrorBoundary>
     </UserCenterLayout>
   );
 }
