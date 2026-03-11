@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { UserCenterLayout } from '@/components/user/UserCenterLayout';
 import { UserStats } from '@/components/user/UserStats';
+import { UserStatsSkeleton } from '@/components/user/Skeleton';
+import { ErrorBoundary } from '@/components/user/ErrorBoundary';
 
 export default function StatsPage() {
   const { user, loading } = useAuth();
@@ -24,9 +26,9 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 64px)' }}>
-        加载中...
-      </div>
+      <UserCenterLayout>
+        <UserStatsSkeleton />
+      </UserCenterLayout>
     );
   }
 
@@ -36,7 +38,11 @@ export default function StatsPage() {
 
   return (
     <UserCenterLayout>
-      <UserStats />
+      <ErrorBoundary>
+        <div className="page-enter">
+          <UserStats />
+        </div>
+      </ErrorBoundary>
     </UserCenterLayout>
   );
 }

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { validatePDFFile } from '@/lib/utils/validation';
+import { validatePDFFile, validatePDFBuffer } from '@/lib/utils/validation';
 import { saveTempFile, generateTempFileName } from '@/lib/storage/temp-files';
 import { addPDFFile } from '@/lib/storage/pdf-files';
 import { ParseStatus } from '@/types/pdf';
@@ -138,6 +138,24 @@ export async function POST(req: NextRequest) {
     console.log('💾 开始保存文件到临时目录...');
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // 验证 PDF 文件内容（检查文件头和文件尾）
+    const bufferValidation = validatePDFBuffer(buffer);
+    if (!bufferValidation.valid) {
+      console.error('❌ PDF 文件内容验证失败:', bufferValidation.error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: bufferValidation.error || 'PDF 文件已损坏或格式不正确，请重新上传',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 }
+      );
+    }
+
     const tempPath = await saveTempFile(buffer, tempFileName);
 
     console.log('✅ 文件已保存到:', tempPath);
@@ -169,24 +187,29 @@ export async function POST(req: NextRequest) {
     // 如果是登录用户，保存到数据库
     if (user && user.id) {
       console.log('💾 保存到用户数据库...');
-      const supabase = createClient();
-      const deviceInfo = await getDeviceInfo();
+      try {
+        const { savePDFInfo, createOrGetConversation } = await import('@/lib/pdf/save-pdf-info');
 
-      const { error: dbError } = await supabase.from('user_pdfs').insert({
-        id: pdfId,
-        user_id: user.id,
-        filename: file.name,
-        file_size: file.size,
-        storage_path: tempPath,
-        pinecone_namespace: user.id, // 使用用户ID作为命名空间
-        upload_ip: deviceInfo.ip,
-      });
+        // Save PDF info
+        await savePDFInfo({
+          pdfId,
+          userId: user.id,
+          filename: file.name,
+          fileSize: file.size,
+          storagePath: tempPath,
+          parseStatus: 'pending',
+        });
 
-      if (dbError) {
-        console.error('❌ 数据库保存失败:', dbError);
+        // Create conversation record
+        await createOrGetConversation({
+          pdfId,
+          userId: user.id,
+        });
+
+        console.log('✅ 已保存到数据库并创建对话记录');
+      } catch (error) {
+        console.error('❌ 数据库保存失败:', error);
         // 继续执行，不阻止上传流程
-      } else {
-        console.log('✅ 已保存到数据库');
       }
     }
 
@@ -200,7 +223,7 @@ export async function POST(req: NextRequest) {
     // 登录用户配额使用记录
     if (user && user.id) {
       console.log('📊 记录用户配额使用...');
-      await recordQuotaUsage(user.id, 'pdf_upload_daily', 1, pdfId);
+      await recordQuotaUsage(user.id, 'pdf_uploads_daily', 1, pdfId);
     }
 
     console.log('✅ 上传完成，准备返回响应');

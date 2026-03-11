@@ -4,7 +4,7 @@
  * 获取用户使用统计
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/middleware';
 import { createClient } from '@/lib/supabase/server';
 
@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 // GET /api/user/stats - 获取用户统计
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await getCurrentUser();
 
@@ -66,18 +66,26 @@ export async function GET(request: NextRequest) {
       console.error('[Stats API] Quota usage error:', quotaError);
     }
 
+    // 获取 ai_calls_daily 配额定义的 ID
+    const { data: aiCallsQuota } = await supabase
+      .from('quota_definitions')
+      .select('id')
+      .eq('name', 'ai_calls_daily')
+      .single();
+
     // 计算聊天次数
-    const totalChats = quotaUsage?.filter((u) => u.quota_type === 'ai_calls').length || 0;
+    const aiCallsQuotaId = (aiCallsQuota as any)?.id;
+    const totalChats = quotaUsage?.filter((u: any) => u.quota_id === aiCallsQuotaId).length || 0;
     const todayChats =
-      quotaUsage?.filter((u) => u.quota_type === 'ai_calls' && new Date(u.created_at) >= today)
+      quotaUsage?.filter((u: any) => u.quota_id === aiCallsQuotaId && new Date(u.created_at) >= today)
         .length || 0;
 
     // 获取最近活动
     const recentActivity =
-      quotaUsage?.slice(0, 10).map((activity) => ({
-        type: activity.quota_type,
+      quotaUsage?.slice(0, 10).map((activity: any) => ({
+        type: activity.quota_id === aiCallsQuotaId ? 'ai_calls' : 'pdf_upload',
         timestamp: activity.created_at,
-        amount: activity.amount,
+        amount: activity.usage_count,
       })) || [];
 
     // 获取历史趋势（最近7天）
@@ -99,8 +107,8 @@ export async function GET(request: NextRequest) {
 
       const dayChats =
         quotaUsage?.filter(
-          (u) =>
-            u.quota_type === 'ai_calls' &&
+          (u: any) =>
+            u.quota_id === aiCallsQuotaId &&
             new Date(u.created_at) >= date &&
             new Date(u.created_at) < nextDate
         ).length || 0;

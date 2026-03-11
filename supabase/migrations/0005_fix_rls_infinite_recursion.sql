@@ -17,7 +17,6 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- 直接查询，绕过 RLS
   RETURN EXISTS (
     SELECT 1
     FROM public.user_profiles
@@ -44,24 +43,29 @@ CREATE POLICY "Admins can view all security logs"
   ON public.user_security_log FOR SELECT
   USING (public.is_admin());
 
--- 确保普通用户策略存在
-CREATE POLICY IF NOT EXISTS "Users can view own profile"
+-- 重新创建普通用户策略
+DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
+CREATE POLICY "Users can view own profile"
   ON public.user_profiles FOR SELECT
   USING (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Users can insert own profile"
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.user_profiles;
+CREATE POLICY "Users can insert own profile"
   ON public.user_profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Users can update own profile"
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
+CREATE POLICY "Users can update own profile"
   ON public.user_profiles FOR UPDATE
   USING (auth.uid() = id);
 
-CREATE POLICY IF NOT EXISTS "Users can view own sessions"
+DROP POLICY IF EXISTS "Users can view own sessions" ON public.user_sessions;
+CREATE POLICY "Users can view own sessions"
   ON public.user_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can view own security logs"
+DROP POLICY IF EXISTS "Users can view own security logs" ON public.user_security_log;
+CREATE POLICY "Users can view own security logs"
   ON public.user_security_log FOR SELECT
   USING (auth.uid() = user_id);
 

@@ -73,16 +73,42 @@ export async function storePineconeVectors(
         }
       }
 
+      // 处理 metadata：只保留 Pinecone 支持的类型（string, number, boolean, string[]）
+      // 将嵌套对象转换为 JSON 字符串
+      const cleanMetadata: Record<string, string | number | boolean | string[]> = {
+        pdfId,
+        chunkIndex: docIndex,
+      };
+
+      if (userId) {
+        cleanMetadata.userId = userId;
+      }
+
+      // 添加文本内容（截断到 Pinecone 限制）
+      cleanMetadata.content = documents[docIndex].pageContent.slice(0, 40000);
+
+      // 处理其他 metadata 字段
+      const docMetadata = documents[docIndex].metadata || {};
+      for (const [key, value] of Object.entries(docMetadata)) {
+        if (value === null || value === undefined) {
+          continue;
+        }
+
+        // Pinecone 支持的类型
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          cleanMetadata[key] = value;
+        } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+          cleanMetadata[key] = value;
+        } else {
+          // 将复杂对象转换为 JSON 字符串
+          cleanMetadata[key] = JSON.stringify(value);
+        }
+      }
+
       return {
         id: `${pdfId}-chunk-${docIndex}`,
         values: embedding,
-        metadata: {
-          pdfId,
-          userId: userId || null, // 添加用户ID
-          content: documents[docIndex].pageContent,
-          chunkIndex: docIndex,
-          ...documents[docIndex].metadata,
-        },
+        metadata: cleanMetadata,
       };
     });
 

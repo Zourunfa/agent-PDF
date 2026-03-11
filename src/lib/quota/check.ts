@@ -27,30 +27,36 @@ export interface QuotaCheckResult {
  */
 async function getUserQuotaDefinition(
   userId: string,
-  quotaType: 'pdf_upload_daily' | 'pdf_chat_daily'
+  quotaName: 'pdf_uploads_daily' | 'ai_calls_daily'
 ): Promise<QuotaDefinition | null> {
   const supabase = await createClient();
 
   // 首先检查用户是否有自定义配额
-  const { data: customQuota, error: customError } = await supabase
+  const { data: userQuota, error: userError } = await supabase
     .from('user_quotas')
-    .select(`
-      quota_definitions (*)
-    `)
+    .select('quota_id')
     .eq('user_id', userId)
-    .eq('quota_type', quotaType)
+    .eq('quota_definitions.name', quotaName)
     .single();
 
-  if (!customError && customQuota) {
-    return customQuota.quota_definitions as QuotaDefinition;
+  if (!userError && userQuota) {
+    // 获取该配额的定义
+    const { data: quotaDef, error: defError } = await supabase
+      .from('quota_definitions')
+      .select('*')
+      .eq('id', userQuota.quota_id)
+      .single();
+
+    if (!defError && quotaDef) {
+      return quotaDef;
+    }
   }
 
   // 使用默认配额
   const { data: defaultQuota, error: defaultError } = await supabase
     .from('quota_definitions')
     .select('*')
-    .eq('quota_type', quotaType)
-    .eq('is_default', true)
+    .eq('name', quotaName)
     .single();
 
   if (defaultError) {
@@ -66,33 +72,45 @@ async function getUserQuotaDefinition(
  */
 async function getUserUsageToday(
   userId: string,
-  quotaType: 'pdf_upload_daily' | 'pdf_chat_daily'
+  quotaName: 'pdf_uploads_daily' | 'ai_calls_daily'
 ): Promise<number> {
   const supabase = await createClient();
+
+  // 获取配额定义的 ID
+  const { data: quotaDef, error: defError } = await supabase
+    .from('quota_definitions')
+    .select('id')
+    .eq('name', quotaName)
+    .single();
+
+  if (defError || !quotaDef) {
+    console.error('[Quota] Error fetching quota definition:', defError);
+    return 0;
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const { data, error } = await supabase
     .from('quota_usage')
-    .select('amount')
+    .select('usage_count')
     .eq('user_id', userId)
-    .eq('quota_type', quotaType)
-    .gte('created_at', today.toISOString());
+    .eq('quota_id', quotaDef.id)
+    .eq('usage_date', today.toISOString().split('T')[0]);
 
   if (error) {
     console.error('[Quota] Error fetching usage:', error);
     return 0;
   }
 
-  return data?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+  return data?.reduce((sum, record) => sum + (record.usage_count || 0), 0) || 0;
 }
 
 /**
  * 检查用户是否可以上传 PDF
  */
 export async function canUploadPDF(userId: string): Promise<QuotaCheckResult> {
-  const quotaDef = await getUserQuotaDefinition(userId, 'pdf_upload_daily');
+  const quotaDef = await getUserQuotaDefinition(userId, 'pdf_uploads_daily');
 
   if (!quotaDef) {
     console.error('[Quota] No quota definition found for PDF upload');
@@ -106,12 +124,12 @@ export async function canUploadPDF(userId: string): Promise<QuotaCheckResult> {
     };
   }
 
-  const used = await getUserUsageToday(userId, 'pdf_upload_daily');
-  const remaining = Math.max(0, quotaDef.quota_limit - used);
+  const used = await getUserUsageToday(userId, 'pdf_uploads_daily');
+  const remaining = Math.max(0, quotaDef.default_limit - used);
 
   return {
     allowed: remaining > 0,
-    quotaLimit: quotaDef.quota_limit,
+    quotaLimit: quotaDef.default_limit,
     used,
     remaining,
     quotaType: 'daily',
@@ -123,7 +141,7 @@ export async function canUploadPDF(userId: string): Promise<QuotaCheckResult> {
  * 检查用户是否可以进行聊天
  */
 export async function canChat(userId: string): Promise<QuotaCheckResult> {
-  const quotaDef = await getUserQuotaDefinition(userId, 'pdf_chat_daily');
+  const quotaDef = await getUserQuotaDefinition(userId, 'ai_calls_daily');
 
   if (!quotaDef) {
     console.error('[Quota] No quota definition found for chat');
@@ -137,12 +155,12 @@ export async function canChat(userId: string): Promise<QuotaCheckResult> {
     };
   }
 
-  const used = await getUserUsageToday(userId, 'pdf_chat_daily');
-  const remaining = Math.max(0, quotaDef.quota_limit - used);
+  const used = await getUserUsageToday(userId, 'ai_calls_daily');
+  const remaining = Math.max(0, quotaDef.default_limit - used);
 
   return {
     allowed: remaining > 0,
-    quotaLimit: quotaDef.quota_limit,
+    quotaLimit: quotaDef.default_limit,
     used,
     remaining,
     quotaType: 'daily',
@@ -155,24 +173,65 @@ export async function canChat(userId: string): Promise<QuotaCheckResult> {
  */
 export async function recordQuotaUsage(
   userId: string,
-  quotaType: 'pdf_upload_daily' | 'pdf_chat_daily',
+  quotaName: 'pdf_uploads_daily' | 'ai_calls_daily',
   amount: number = 1,
   resourceId?: string
 ): Promise<void> {
   const supabase = await createClient();
 
-  const { error } = await supabase.from('quota_usage').insert({
-    user_id: userId,
-    quota_type: quotaType,
-    amount,
-    resource_id: resourceId,
-    created_at: new Date().toISOString(),
-  });
+  // 获取配额定义的 ID
+  const { data: quotaDef, error: defError } = await supabase
+    .from('quota_definitions')
+    .select('id')
+    .eq('name', quotaName)
+    .single();
 
-  if (error) {
-    console.error('[Quota] Error recording usage:', error);
+  if (defError || !quotaDef) {
+    console.error('[Quota] Error fetching quota definition:', defError);
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Use upsert to handle duplicate key errors (increment if exists, insert if not)
+  const { data: existing } = await supabase
+    .from('quota_usage')
+    .select('usage_count')
+    .eq('user_id', userId)
+    .eq('quota_id', quotaDef.id)
+    .eq('usage_date', today)
+    .maybeSingle();
+
+  if (existing) {
+    // Update existing record
+    const { error } = await supabase
+      .from('quota_usage')
+      .update({ usage_count: existing.usage_count + amount })
+      .eq('user_id', userId)
+      .eq('quota_id', quotaDef.id)
+      .eq('usage_date', today);
+
+    if (error) {
+      console.error('[Quota] Error updating usage:', error);
+    } else {
+      console.log(
+        `[Quota] ✓ Updated usage to ${existing.usage_count + amount} for ${quotaName} (user: ${userId})`
+      );
+    }
   } else {
-    console.log(`[Quota] ✓ Recorded ${amount} usage for ${quotaType} (user: ${userId})`);
+    // Insert new record
+    const { error } = await supabase.from('quota_usage').insert({
+      user_id: userId,
+      quota_id: quotaDef.id,
+      usage_date: today,
+      usage_count: amount,
+    });
+
+    if (error) {
+      console.error('[Quota] Error recording usage:', error);
+    } else {
+      console.log(`[Quota] ✓ Recorded ${amount} usage for ${quotaName} (user: ${userId})`);
+    }
   }
 }
 
@@ -180,10 +239,7 @@ export async function recordQuotaUsage(
  * 获取用户配额统计
  */
 export async function getUserQuotaStats(userId: string) {
-  const [uploadQuota, chatQuota] = await Promise.all([
-    canUploadPDF(userId),
-    canChat(userId),
-  ]);
+  const [uploadQuota, chatQuota] = await Promise.all([canUploadPDF(userId), canChat(userId)]);
 
   return {
     upload: uploadQuota,
