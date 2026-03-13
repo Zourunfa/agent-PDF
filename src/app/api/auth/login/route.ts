@@ -73,15 +73,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取用户完整信息
+    // 检查用户是否被删除（user_profiles 是否存在）
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('*')
+      .select('id, status, email_verified')
       .eq('id', data.user.id)
       .single();
 
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
+    // 如果 profile 不存在或用户被封禁，拒绝登录
+    if (profileError || !profile) {
+      console.error('[Login] 用户不存在或已被删除:', email, data.user.id);
+
+      // 清除 session
+      await supabase.auth.signOut();
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'USER_DELETED',
+          message: '该账户已被删除或不存在',
+        },
+        { status: 401 }
+      );
+    }
+
+    // 检查用户邮箱是否验证
+    if (!profile.email_verified) {
+      console.error('[Login] 用户邮箱未验证:', email);
+
+      // 清除 session
+      await supabase.auth.signOut();
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'EMAIL_NOT_VERIFIED',
+          message: '请先验证您的邮箱。检查您的收件箱并点击验证链接',
+          requireVerification: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    // 检查用户状态
+    if (profile.status === 'suspended') {
+      console.error('[Login] 用户已被封禁:', email);
+
+      // 清除 session
+      await supabase.auth.signOut();
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'USER_SUSPENDED',
+          message: '该账户已被封禁',
+        },
+        { status: 403 }
+      );
     }
 
     // 记录登录日志

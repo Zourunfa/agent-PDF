@@ -15,7 +15,6 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { createClient } from '@/lib/supabase/client';
 
 function LoginForm() {
   const router = useRouter();
@@ -23,7 +22,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [form] = Form.useForm();
-  const supabase = createClient();
 
   useEffect(() => {
     if (searchParams.get('registered') === 'true') {
@@ -35,42 +33,36 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      // 使用 Supabase 客户端直接登录
-      // 这会自动处理 session 和 cookies
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-        options: {
-          // 设置 session 过期时间（记住我 = 30 天，否则 7 天）
-          expiresIn: values.rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60,
+      // 调用我们的登录 API（会检查用户是否被删除）
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          rememberMe: values.rememberMe,
+        }),
       });
 
-      if (error) {
-        // 处理邮箱未验证的特殊情况
-        if (
-          error.code === 'email_not_confirmed' ||
-          error.message?.includes('Email not confirmed')
-        ) {
-          message.warning('请先验证您的邮箱。检查您的收件箱并点击验证链接');
-          return;
-        }
-        throw error;
-      }
+      const data = await response.json();
 
-      if (!data.user) {
-        throw new Error('登录失败，请稍后重试');
+      if (!response.ok || !data.success) {
+        // 处理各种错误
+        if (data.error === 'USER_DELETED') {
+          message.error(data.message || '该账户已被删除或不存在');
+        } else if (data.error === 'USER_SUSPENDED') {
+          message.error(data.message || '该账户已被封禁');
+        } else if (data.error === 'EMAIL_NOT_VERIFIED') {
+          message.warning(data.message || '请先验证您的邮箱');
+        } else {
+          message.error(data.message || '邮箱或密码不正确');
+        }
+        return;
       }
 
       message.success('登录成功！');
-
-      // Debug: Log all cookies after login
-      console.log('[Login] Cookies after login:', document.cookie);
-      console.log('[Login] Session data:', {
-        access_token: data.session?.access_token?.substring(0, 20) + '...',
-        refresh_token: data.session?.refresh_token?.substring(0, 20) + '...',
-        expires_at: data.session?.expires_at,
-      });
 
       // 检查是否有重定向路径
       const redirectPath = searchParams.get('redirect');
@@ -82,7 +74,7 @@ function LoginForm() {
       router.push(redirectPath || '/');
     } catch (err: any) {
       console.error('Login error:', err);
-      message.error(err.message || '登录失败，请检查邮箱和密码');
+      message.error('登录失败，请检查网络连接');
     } finally {
       setLoading(false);
     }

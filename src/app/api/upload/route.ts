@@ -158,6 +158,18 @@ export async function POST(req: NextRequest) {
 
     const tempPath = await saveTempFile(buffer, tempFileName);
 
+    // 上传到 Vercel Blob Storage 以持久化存储
+    let blobUrl: string | null = null;
+    try {
+      console.log('☁️ 上传 PDF 到 Vercel Blob Storage...');
+      const { uploadPDFToBlob } = await import('@/lib/storage/blob-storage');
+      blobUrl = await uploadPDFToBlob(pdfId, buffer, file.name);
+      console.log('✅ PDF 已上传到 Blob Storage:', blobUrl);
+    } catch (blobError) {
+      console.warn('⚠️ Blob Storage 上传失败，将使用临时文件:', blobError);
+      // 继续执行，使用临时文件作为后备
+    }
+
     console.log('✅ 文件已保存到:', tempPath);
 
     // 创建 PDF 文件记录
@@ -190,13 +202,16 @@ export async function POST(req: NextRequest) {
       try {
         const { savePDFInfo, createOrGetConversation } = await import('@/lib/pdf/save-pdf-info');
 
+        // 使用 Blob URL 或临时路径作为 storagePath
+        const storagePath = blobUrl || tempPath;
+
         // Save PDF info
         await savePDFInfo({
           pdfId,
           userId: user.id,
           filename: file.name,
           fileSize: file.size,
-          storagePath: tempPath,
+          storagePath: storagePath,
           parseStatus: 'pending',
         });
 

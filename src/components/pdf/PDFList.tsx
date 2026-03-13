@@ -15,6 +15,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { usePDF } from '@/contexts/PDFContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ParseStatus } from '@/types/pdf';
 import { ManualTextInput } from './ManualTextInput';
 
@@ -31,8 +32,21 @@ interface PDFListItem {
   lastConversationAt: string | null;
 }
 
+// 统一的 PDF 列表项类型（用于显示）
+interface DisplayPDFItem {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  pageCount: number | null;
+  parseStatus: ParseStatus;
+  uploadedAt: string;
+  conversationCount?: number;
+  lastConversationAt?: string | null;
+}
+
 export function PDFList() {
-  const { pdfs, activePdfId, setActivePdf, removePDF } = usePDF();
+  const { pdfs, activePdfId, setActivePdf, removePDF, addPDF } = usePDF();
+  const { user } = useAuth();
   const [manualInputVisible, setManualInputVisible] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<{ id: string; fileName: string } | null>(null);
   const [apiPdfs, setApiPdfs] = useState<PDFListItem[]>([]);
@@ -40,8 +54,14 @@ export function PDFList() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 从 API 获取 PDF 列表
+  // 从 API 获取 PDF 列表（仅登录用户）
   useEffect(() => {
+    // 非登录用户不请求历史列表
+    if (!user) {
+      console.log('[PDFList] 未登录，跳过历史 PDF 列表加载');
+      return;
+    }
+
     const fetchPDFList = async () => {
       try {
         setLoading(true);
@@ -75,10 +95,15 @@ export function PDFList() {
     };
 
     fetchPDFList();
-  }, []);
+  }, [user]); // 添加 user 依赖，登录状态变化时重新加载
 
   // 刷新 PDF 列表
   const refreshPDFList = async () => {
+    // 非登录用户不刷新
+    if (!user) {
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch(
@@ -94,6 +119,41 @@ export function PDFList() {
       console.error('[PDFList] 刷新列表失败:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 处理点击 PDF（历史文件）
+  const handlePdfClick = async (pdf: DisplayPDFItem) => {
+    // 如果 PDF 已经在 Context 中，直接设置为活动
+    if (pdfs.has(pdf.id)) {
+      setActivePdf(pdf.id);
+      return;
+    }
+
+    // 否则，添加到 Context（历史 PDF 需要从 API 获取信息）
+    try {
+      console.log('[PDFList] 加载历史 PDF:', pdf.id);
+
+      // 将 API 数据转换为 PDFFile 格式
+      const pdfFile: Parameters<typeof addPDF>[0] = {
+        id: pdf.id,
+        fileName: pdf.fileName,
+        sanitizedName: pdf.fileName, // 使用 filename 作为 sanitizedName
+        fileSize: pdf.fileSize,
+        mimeType: 'application/pdf',
+        uploadedAt: new Date(pdf.uploadedAt), // 转换为 Date 类型
+        pageCount: pdf.pageCount,
+        parseStatus: pdf.parseStatus,
+        textContent: null,
+        // 历史文件没有 base64Data，会让 PDFPreview 从 API 加载
+        base64Data: undefined,
+        tempPath: null,
+      };
+
+      addPDF(pdfFile);
+      setActivePdf(pdf.id);
+    } catch (error) {
+      console.error('[PDFList] 加载 PDF 失败:', error);
     }
   };
 
@@ -132,45 +192,8 @@ export function PDFList() {
     });
   };
 
-  // 从 API 获取 PDF 列表
-  useEffect(() => {
-    const fetchPDFList = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log('[PDFList] 正在获取 PDF 列表...');
-
-        const response = await fetch(
-          '/api/pdfs/list?limit=50&offset=0&sortBy=uploadedAt&sortOrder=desc'
-        );
-
-        if (!response.ok) {
-          throw new Error(`API 错误: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.data.pdfs) {
-          console.log('[PDFList] 获取到', data.data.pdfs.length, '个 PDF');
-          setApiPdfs(data.data.pdfs);
-        } else {
-          console.warn('[PDFList] API 返回异常:', data);
-          setError('获取 PDF 列表失败');
-        }
-      } catch (err) {
-        console.error('[PDFList] 获取 PDF 列表出错:', err);
-        setError(err instanceof Error ? err.message : '获取 PDF 列表失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPDFList();
-  }, []);
-
   // 优先使用 API 数据，如果没有则使用本地 Context 数据
-  const pdfList =
+  const pdfList: DisplayPDFItem[] =
     apiPdfs.length > 0
       ? apiPdfs.map((pdf) => ({
           id: pdf.id,
@@ -182,7 +205,16 @@ export function PDFList() {
           conversationCount: pdf.conversationCount,
           lastConversationAt: pdf.lastConversationAt,
         }))
-      : Array.from(pdfs.values());
+      : Array.from(pdfs.values()).map((pdf) => ({
+          id: pdf.id,
+          fileName: pdf.fileName,
+          fileSize: pdf.fileSize,
+          pageCount: pdf.pageCount,
+          parseStatus: pdf.parseStatus,
+          uploadedAt: pdf.uploadedAt.toISOString(),
+          conversationCount: 0,
+          lastConversationAt: null,
+        }));
 
   if (pdfList.length === 0) {
     return (
@@ -206,7 +238,7 @@ export function PDFList() {
           return (
             <div
               key={pdf.id}
-              onClick={() => setActivePdf(pdf.id)}
+              onClick={() => handlePdfClick(pdf)}
               style={{
                 cursor: 'pointer',
                 backgroundColor: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',

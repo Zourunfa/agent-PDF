@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendVerificationEmail } from '@/lib/email';
+import { sendVerificationEmail } from '@/lib/email-mailersend';
 import { randomUUID } from 'crypto';
 
 // 强制动态渲染
@@ -83,29 +83,117 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建用户
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: false, // 不自动确认邮箱，需要验证
-      user_metadata: {
-        name: name || email.split('@')[0],
-      },
-    });
+    let authData = { user: null, session: null };
+    let authError = null;
+
+    try {
+      const result = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: false, // 不自动确认邮箱，需要验证
+        user_metadata: {
+          name: name || email.split('@')[0],
+        },
+      });
+      authData = result.data;
+      authError = result.error;
+    } catch (e) {
+      authError = e;
+    }
 
     if (authError) {
-      // 处理常见错误
-      if (authError.message.includes('already been registered')) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'EMAIL_ALREADY_EXISTS',
-            message: '该邮箱已被注册',
-          },
-          { status: 409 }
-        );
-      }
+      // 处理邮箱已存在的情况
+      if (
+        authError.message?.includes('already been registered') ||
+        authError.message?.includes('A user with this email address has already been registered')
+      ) {
+        // 检查是否是被删除的用户（auth.users 存在但 user_profiles 不存在）
+        const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
+        const existingAuthUser = existingAuthUsers?.users?.find((u) => u.email === email);
 
-      throw authError;
+        if (existingAuthUser) {
+          // 检查 user_profiles 是否存在
+          const { data: existingProfile } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('id', existingAuthUser.id)
+            .single();
+
+          if (!existingProfile) {
+            // 这是被删除的用户，直接复用已有的 auth.users 记录，重新创建 user_profiles
+            console.log(
+              '[Register] 检测到被删除的用户，复用 auth.users 记录重新创建 profile:',
+              email
+            );
+
+            // 手动创建 user_profiles 记录
+            const verificationToken = randomUUID();
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+            const { error: insertProfileError } = await supabase.from('user_profiles').insert({
+              id: existingAuthUser.id,
+              email: existingAuthUser.email,
+              name: name || email.split('@')[0],
+              role: 'user',
+              email_verified: false,
+              status: 'active',
+              email_verification_token: verificationToken,
+              verification_expires_at: expiresAt.toISOString(),
+            });
+
+            if (insertProfileError) {
+              console.error('[Register] 创建 user_profiles 失败:', insertProfileError);
+              throw new Error('注册失败，请稍后重试');
+            }
+
+            // 发送验证邮件
+            const emailResult = await sendVerificationEmail(
+              email,
+              verificationToken,
+              name || undefined
+            );
+
+            return NextResponse.json({
+              success: true,
+              message: emailResult.success
+                ? '注册成功！请检查您的邮箱并点击验证链接完成注册'
+                : emailResult.developmentMode
+                  ? '注册成功！开发模式下邮件已跳过（仍需验证邮箱）'
+                  : '注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件',
+              requireVerification: true, // 始终需要验证
+              emailSent: emailResult.success,
+              developmentMode: emailResult.developmentMode || false,
+              user: {
+                id: existingAuthUser.id,
+                email: existingAuthUser.email,
+                name: name || email.split('@')[0],
+                emailVerified: false, // 始终未验证
+              },
+            });
+          } else {
+            // user_profiles 存在，是真正的重复注册
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'EMAIL_ALREADY_EXISTS',
+                message: '该邮箱已被注册',
+              },
+              { status: 409 }
+            );
+          }
+        } else {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'EMAIL_ALREADY_EXISTS',
+              message: '该邮箱已被注册',
+            },
+            { status: 409 }
+          );
+        }
+      } else {
+        throw authError;
+      }
     }
 
     if (!authData.user) {
@@ -150,24 +238,21 @@ export async function POST(request: NextRequest) {
     // 发送验证邮件
     const emailResult = await sendVerificationEmail(email, verificationToken, name || undefined);
 
-    if (!emailResult.success) {
-      console.error('Failed to send verification email:', emailResult.error);
-      // 注册成功但邮件发送失败，记录但不阻止用户
-      // 用户可以稍后重新发送验证邮件
-    }
-
     return NextResponse.json({
       success: true,
       message: emailResult.success
         ? '注册成功！请检查您的邮箱并点击验证链接完成注册'
-        : '注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件',
-      requireVerification: true, // 始终需要验证邮箱
+        : emailResult.developmentMode
+          ? '注册成功！开发模式下邮件已跳过（仍需验证邮箱）'
+          : '注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件',
+      requireVerification: true, // 始终需要验证
       emailSent: emailResult.success,
+      developmentMode: emailResult.developmentMode || false,
       user: {
         id: authData.user.id,
         email: authData.user.email,
         name: authData.user.user_metadata?.name,
-        emailVerified: false, // 始终为 false，必须验证邮箱
+        emailVerified: false, // 始终未验证，需要点击邮件链接
       },
     });
   } catch (error) {
