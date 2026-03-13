@@ -1,14 +1,15 @@
-// 邮件服务 - 使用 Resend
-import { Resend } from 'resend';
+// 阿里云邮件服务 - DirectMail
+// 使用 DirectMail API 发送邮件
 
-// 初始化 Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// 阿里云 DirectMail 配置
+const ACCESS_KEY_ID = process.env.ALIYUN_ACCESS_KEY_ID || '';
+const ACCESS_KEY_SECRET = process.env.ALIYUN_ACCESS_KEY_SECRET || '';
+const ACCOUNT_NAME = process.env.ALIYUN_DM_ACCOUNT_NAME || '';
+const REGION = process.env.ALIYUN_DM_REGION || 'cn-hangzhou';
+const FROM_ADDRESS = process.env.ALIYUN_DM_FROM_ADDRESS || '';
+const FROM_ALIAS = process.env.ALIYUN_DM_FROM_ALIAS || 'PDF AI Chat';
 
-// 应用 URL
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-// 开发环境标志
-const isDevelopment = process.env.NODE_ENV === 'development';
 
 /**
  * 邮件类型
@@ -22,7 +23,6 @@ interface SendEmailResult {
   success: boolean;
   messageId?: string;
   error?: string;
-  developmentMode?: boolean;
 }
 
 /**
@@ -141,7 +141,7 @@ function getVerificationEmailTemplate(vars: EmailTemplateVars): string {
         感谢您注册 PDF AI Chat。为了确保账户安全，请点击下面的按钮验证您的邮箱地址：
       </p>
       <div class="button-container">
-        <a href="${verifyUrl}" class="button">验证邮箱地址</a>
+        <a href="${verifyUrl}" class="button" target="_blank">验证邮箱地址</a>
       </div>
       <p class="message">
         或者复制以下链接到浏览器中打开：<br>
@@ -153,10 +153,6 @@ function getVerificationEmailTemplate(vars: EmailTemplateVars): string {
     </div>
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} PDF AI Chat. 保留所有权利。</p>
-      <p>
-        如果您有任何问题，请联系我们的
-        <a href="mailto:support@example.com">客服团队</a>
-      </p>
     </div>
   </div>
 </body>
@@ -230,19 +226,12 @@ function getPasswordResetEmailTemplate(vars: EmailTemplateVars): string {
       font-weight: 600;
       font-size: 16px;
     }
-    .button:hover {
-      opacity: 0.9;
-    }
     .footer {
       background-color: #f9f9f9;
       padding: 30px;
       text-align: center;
       font-size: 14px;
       color: #999;
-    }
-    .footer a {
-      color: #f5576c;
-      text-decoration: none;
     }
     .warning {
       background-color: #fff3cd;
@@ -271,7 +260,7 @@ function getPasswordResetEmailTemplate(vars: EmailTemplateVars): string {
         我们收到了您账户的密码重置请求。如果这是您发起的，请点击下面的按钮重置密码：
       </p>
       <div class="button-container">
-        <a href="${resetUrl}" class="button">重置密码</a>
+        <a href="${resetUrl}" class="button" target="_blank">重置密码</a>
       </div>
       <p class="message">
         或者复制以下链接到浏览器中打开：<br>
@@ -286,10 +275,6 @@ function getPasswordResetEmailTemplate(vars: EmailTemplateVars): string {
     </div>
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} PDF AI Chat. 保留所有权利。</p>
-      <p>
-        如果您有任何问题，请联系我们的
-        <a href="mailto:support@example.com">客服团队</a>
-      </p>
     </div>
   </div>
 </body>
@@ -298,7 +283,126 @@ function getPasswordResetEmailTemplate(vars: EmailTemplateVars): string {
 }
 
 // ============================================
-// 邮件发送函数
+// 阿里云 DirectMail API 调用
+// ============================================
+
+/**
+ * 阿里云 API 签名 (使用 HMAC-SHA1)
+ */
+function generateSignature(method: string, params: Record<string, string>, secret: string): string {
+  // 1. 参数排序
+  const sortedKeys = Object.keys(params).sort();
+  const canonicalizedQueryString = sortedKeys
+    .map((key) => `${specialEncode(key)}=${specialEncode(params[key])}`)
+    .join('&');
+
+  // 2. 构造待签名字符串
+  const stringToSign = `${method}&${specialEncode('/')}&${specialEncode(canonicalizedQueryString)}`;
+
+  // 3. 计算 HMAC-SHA1 签名
+  const crypto = require('crypto');
+  const signature = crypto.createHmac('sha1', `${secret}&`).update(stringToSign).digest('base64');
+
+  return signature;
+}
+
+/**
+ * URL 编码 (符合阿里云 API 规范)
+ */
+function specialEncode(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/\!/g, '%21')
+    .replace(/\'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29')
+    .replace(/\*/g, '%2A');
+}
+
+/**
+ * 调用阿里云 DirectMail API (RPC 风格)
+ */
+async function callDirectMailAPI(action: string, params: Record<string, any>): Promise<any> {
+  const crypto = require('crypto');
+
+  // 公共参数
+  const commonParams = {
+    Format: 'JSON',
+    Version: '2015-11-23',
+    AccessKeyId: ACCESS_KEY_ID,
+    SignatureMethod: 'HMAC-SHA1',
+    SignatureNonce: crypto.randomBytes(16).toString('hex'),
+    SignatureVersion: '1.0',
+    Timestamp: new Date().toISOString(),
+    Action: action,
+  };
+
+  // 合并参数
+  const allParams = { ...commonParams, ...params };
+
+  // 生成签名
+  const signature = generateSignature('GET', allParams, ACCESS_KEY_SECRET);
+  allParams.Signature = signature;
+
+  // 构造 URL
+  const queryString = Object.keys(allParams)
+    .sort()
+    .map((key) => `${key}=${specialEncode(allParams[key])}`)
+    .join('&');
+  const url = `https://dm.${REGION}.aliyuncs.com/?${queryString}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.Code && data.Code !== 'OK') {
+      throw new Error(`DirectMail API Error: ${data.Code} - ${data.Message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[Aliyun Mail] API call failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * 发送单封邮件
+ */
+async function sendSingleMail(
+  toAddress: string,
+  subject: string,
+  htmlBody: string
+): Promise<string> {
+  const accountName = ACCOUNT_NAME || '';
+  const fromAlias = FROM_ALIAS || 'PDF AI Chat';
+
+  const params = {
+    AccountName: accountName,
+    AddressType: 1,
+    ReplyToAddress: false,
+    ToAddress: toAddress,
+    FromAlias,
+    Subject: subject,
+    HtmlBody: htmlBody,
+  };
+
+  const result = await callDirectMailAPI('SingleSendMail', params);
+
+  return result.Env?.RequestId || result?.RequestId || 'unknown';
+}
+
+// ============================================
+// 公开接口
 // ============================================
 
 /**
@@ -309,45 +413,32 @@ export async function sendVerificationEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.warn('⚠️ Resend service not configured');
-    if (isDevelopment) {
-      console.log('[Dev Mode] 跳过邮件验证，自动验证用户');
-      return { success: true, developmentMode: true, messageId: 'dev-mode-skip' };
-    }
-    return { success: false, error: 'Email service not configured' };
+  // 检查配置
+  if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET || !FROM_ADDRESS) {
+    console.warn('⚠️ 阿里云邮件服务未配置，尝试使用 Resend 备用');
+
+    // 降级到 Resend
+    const { sendVerificationEmail: resendSend } = await import('./email');
+    return resendSend(email, token, name);
   }
 
   try {
     const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
     const html = getVerificationEmailTemplate({ email, name, verifyUrl });
 
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
-      to: email,
-      subject: '验证您的邮箱地址 - PDF AI Chat',
-      html,
-    });
+    console.log('[Aliyun Mail] 发送验证邮件到:', email);
 
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
+    const messageId = await sendSingleMail(email, '验证您的邮箱地址 - PDF AI Chat', html);
 
-    console.log('✓ Verification email sent successfully:', response.data?.id);
-    return { success: true, messageId: response.data?.id };
+    console.log('✓ 阿里云验证邮件发送成功:', messageId);
+    return { success: true, messageId };
   } catch (error: any) {
-    console.error('✗ Error sending verification email:', error.message);
+    console.error('✗ 阿里云邮件发送失败:', error.message);
 
-    // 开发环境：邮件发送失败时，返回成功（跳过验证）
-    if (isDevelopment) {
-      console.log('[Dev Mode] 邮件发送失败，跳过验证');
-      return { success: true, developmentMode: true, messageId: 'dev-mode-skip' };
-    }
-
-    return {
-      success: false,
-      error: error.message || 'Unknown error',
-    };
+    // 降级到 Resend
+    console.log('降级到 Resend 服务...');
+    const { sendVerificationEmail: resendSend } = await import('./email');
+    return resendSend(email, token, name);
   }
 }
 
@@ -359,85 +450,28 @@ export async function sendPasswordResetEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend service not configured');
-    return { success: false, error: 'Email service not configured' };
+  // 检查配置
+  if (!ACCESS_KEY_ID || !ACCESS_KEY_SECRET || !FROM_ADDRESS) {
+    const { sendPasswordResetEmail: resendSend } = await import('./email');
+    return resendSend(email, token, name);
   }
 
   try {
     const resetUrl = `${APP_URL}/reset-password?token=${token}`;
     const html = getPasswordResetEmailTemplate({ email, name, resetUrl });
 
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
-      to: email,
-      subject: '重置您的密码 - PDF AI Chat',
-      html,
-    });
+    console.log('[Aliyun Mail] 发送密码重置邮件到:', email);
 
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
+    const messageId = await sendSingleMail(email, '重置您的密码 - PDF AI Chat', html);
 
-    console.log('Password reset email sent successfully:', response.data?.id);
-    return { success: true, messageId: response.data?.id };
-  } catch (error) {
-    console.error('Error sending password reset email:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
+    console.log('✓ 阿里云密码重置邮件发送成功:', messageId);
+    return { success: true, messageId };
+  } catch (error: any) {
+    console.error('✗ 阿里云邮件发送失败:', error.message);
 
-/**
- * 发送欢迎邮件（可选功能）
- */
-export async function sendWelcomeEmail(email: string, name?: string): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend service not configured');
-    return { success: false, error: 'Email service not configured' };
-  }
-
-  try {
-    const displayName = name || email.split('@')[0];
-
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
-      to: email,
-      subject: '欢迎加入 PDF AI Chat！',
-      html: `
-        <!DOCTYPE html>
-        <html lang="zh-CN">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>欢迎加入 PDF AI Chat</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1>欢迎加入 PDF AI Chat，${displayName}！</h1>
-            <p>感谢您的注册。我们很高兴您能加入我们。</p>
-            <p>您可以开始上传 PDF 文件并与 AI 进行对话了。</p>
-            <p>如果您有任何问题，请随时联系我们的客服团队。</p>
-            <a href="${APP_URL}" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">开始使用</a>
-          </div>
-        </body>
-        </html>
-      `,
-    });
-
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    return { success: true, messageId: response.data?.id };
-  } catch (error) {
-    console.error('Error sending welcome email:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+    // 降级到 Resend
+    const { sendPasswordResetEmail: resendSend } = await import('./email');
+    return resendSend(email, token, name);
   }
 }
 
@@ -445,5 +479,5 @@ export async function sendWelcomeEmail(email: string, name?: string): Promise<Se
  * 检查邮件服务是否可用
  */
 export function isEmailServiceAvailable(): boolean {
-  return !!resend;
+  return !!(ACCESS_KEY_ID && ACCESS_KEY_SECRET && FROM_ADDRESS);
 }

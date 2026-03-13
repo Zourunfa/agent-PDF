@@ -49,14 +49,23 @@ export function useAuth() {
           // 获取用户 profile
           try {
             const response = await fetch('/api/auth/me');
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success && data.user) {
-                setState((prev) => ({
-                  ...prev,
-                  profile: data.user,
-                }));
-              }
+            const data = await response.json();
+
+            if (response.ok && data.success && data.user) {
+              setState((prev) => ({
+                ...prev,
+                profile: data.user,
+              }));
+            } else if (response.status === 401 || response.status === 403) {
+              // 用户不存在或被封禁，自动退出登录
+              console.error('[Auth] User not found or suspended, signing out...');
+              await supabase.auth.signOut();
+              setState({
+                user: null,
+                profile: null,
+                loading: false,
+                error: data.message || '用户不存在或已被封禁',
+              });
             }
           } catch (error) {
             console.error('Error fetching profile:', error);
@@ -96,14 +105,23 @@ export function useAuth() {
         // 获取用户 profile
         try {
           const response = await fetch('/api/auth/me');
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.user) {
-              setState((prev) => ({
-                ...prev,
-                profile: data.user,
-              }));
-            }
+          const data = await response.json();
+
+          if (response.ok && data.success && data.user) {
+            setState((prev) => ({
+              ...prev,
+              profile: data.user,
+            }));
+          } else if (response.status === 401 || response.status === 403) {
+            // 用户不存在或被封禁，自动退出登录
+            console.error('[Auth] User not found or suspended, signing out...');
+            await supabase.auth.signOut();
+            setState({
+              user: null,
+              profile: null,
+              loading: false,
+              error: data.message || '用户不存在或已被封禁',
+            });
           }
         } catch (error) {
           console.error('Error fetching profile:', error);

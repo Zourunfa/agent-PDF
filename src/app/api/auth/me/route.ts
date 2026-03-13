@@ -36,21 +36,30 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      console.error('Profile error:', profileError);
-      // 如果 profile 不存在，仍然返回用户信息
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.name,
-          role: 'user',
-          avatar: null,
-          emailVerified: user.email_confirmed_at != null,
-          createdAt: user.created_at,
+    // 如果 profile 不存在（用户被删除或封禁），返回 401
+    if (profileError || !profile) {
+      console.error('[Auth] Profile not found for user:', user.id, profileError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'USER_NOT_FOUND',
+          message: '用户不存在或已被封禁',
         },
-      });
+        { status: 401 }
+      );
+    }
+
+    // 检查用户状态
+    if (profile.status === 'suspended') {
+      console.error('[Auth] User is suspended:', user.id);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'USER_SUSPENDED',
+          message: '用户已被封禁',
+        },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({
