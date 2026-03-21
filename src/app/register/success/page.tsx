@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button, message } from 'antd';
@@ -15,7 +15,7 @@ import {
   LoadingOutlined,
 } from '@ant-design/icons';
 
-export default function RegisterSuccessPage() {
+function RegisterSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -481,5 +481,26 @@ export default function RegisterSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Suspense wrapper for useSearchParams
+export default function RegisterSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+        }}
+      >
+        <div style={{ textAlign: 'center', color: '#6B7280' }}>加载中...</div>
+      </div>
+    }>
+      <RegisterSuccessContent />
+    </Suspense>
   );
 }
