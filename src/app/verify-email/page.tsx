@@ -4,9 +4,18 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, CheckCircle2, AlertCircle, Mail, RefreshCw } from 'lucide-react';
+import { Button, Card, Result, Spin, Space, Typography, Alert, message } from 'antd';
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  LoadingOutlined,
+  ArrowLeftOutlined,
+  ReloadOutlined,
+  SafetyOutlined,
+} from '@ant-design/icons';
+import { createClient } from '@/lib/supabase/client';
+
+const { Text, Paragraph } = Typography;
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -67,6 +76,23 @@ function VerifyEmailForm() {
 
       if (data.success) {
         setStatus('success');
+
+        // 刷新认证状态（如果用户已登录）
+        try {
+          const supabase = createClient();
+          const { data: { session } } = await supabase.auth.getSession();
+
+          if (session) {
+            // 用户已登录，刷新 session 以触发 auth state change
+            await supabase.auth.refreshSession();
+            message.success({
+              content: '邮箱验证成功！您的账户信息已更新',
+              duration: 3,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to refresh auth state:', err);
+        }
       } else {
         setStatus('error');
         if (data.error === 'TOKEN_EXPIRED') {
@@ -93,145 +119,179 @@ function VerifyEmailForm() {
 
   if (loading || status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="space-y-1 text-center">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-              </div>
-              <CardTitle className="text-2xl font-bold tracking-tight">正在验证...</CardTitle>
-              <CardDescription>
-                请稍候，我们正在验证您的邮箱
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px'
+      }}>
+        <Card style={{ width: '100%', maxWidth: '480px', textAlign: 'center', borderRadius: '16px' }}>
+          <Space direction="vertical" size="large" style={{ width: '100%', padding: '20px 0' }}>
+            <Spin
+              indicator={<LoadingOutlined style={{ fontSize: 48, color: '#667eea' }} spin />}
+            />
+            <div>
+              <Typography.Title level={3} style={{ margin: 0 }}>正在验证...</Typography.Title>
+              <Text type="secondary">请稍候，我们正在验证您的邮箱</Text>
+            </div>
+          </Space>
+        </Card>
       </div>
     );
   }
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="space-y-1 text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold tracking-tight">邮箱验证成功</CardTitle>
-              <CardDescription>
-                您的邮箱已成功验证
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-green-700">
-                    <p className="font-medium mb-1">验证完成</p>
-                    <p className="text-xs">
-                      您的邮箱已成功验证，现在可以享受所有功能了。
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-700">
-                  <strong>下一步：</strong>您现在可以使用您的账户登录并开始使用 PDF AI Chat。
-                </p>
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col space-y-4">
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px'
+      }}>
+        <Card style={{ width: '100%', maxWidth: '480px', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <Result
+            icon={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 72 }} />}
+            title={<span style={{ fontSize: 28, fontWeight: 600 }}>邮箱验证成功</span>}
+            subTitle="您的邮箱已成功验证，现在可以享受所有功能了"
+            extra={[
               <Button
+                key="login"
+                type="primary"
+                size="large"
                 onClick={() => router.push('/login')}
-                className="w-full"
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  height: '44px',
+                  fontSize: '16px'
+                }}
               >
                 前往登录
-              </Button>
-
-              <div className="text-center">
+              </Button>,
+              <div key="home" style={{ marginTop: '16px', textAlign: 'center' }}>
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  style={{
+                    color: '#666',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px'
+                  }}
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeftOutlined />
                   返回首页
                 </Link>
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
+              </div>,
+            ]}
+          >
+            <Alert
+              message={
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Text strong>✓ 验证完成</Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    您的邮箱已成功验证，现在可以使用您的账户登录并开始使用 PDF AI Chat。
+                  </Text>
+                </Space>
+              }
+              type="success"
+              showIcon
+              style={{ marginTop: '24px' }}
+            />
+          </Result>
+        </Card>
       </div>
     );
   }
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="space-y-1 text-center">
-              <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold tracking-tight">验证失败</CardTitle>
-              <CardDescription>
-                邮箱验证失败
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-red-700">
-                    <p className="font-medium mb-1">验证失败</p>
-                    <p className="text-xs">{errorMessage}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-700">
-                  <strong>解决方案：</strong>您可以重新发送验证邮件或联系客服获取帮助。
-                </p>
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col space-y-4">
-              <Button
-                onClick={handleResend}
-                variant="outline"
-                className="w-full"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                重新发送验证邮件
-              </Button>
-
-              <Button
-                onClick={() => router.push('/login')}
-                className="w-full"
-              >
-                返回登录
-              </Button>
-
-              <div className="text-center">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px'
+      }}>
+        <Card style={{ width: '100%', maxWidth: '480px', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <Result
+            icon={<CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 72 }} />}
+            title={<span style={{ fontSize: 28, fontWeight: 600 }}>验证失败</span>}
+            subTitle="邮箱验证失败，请稍后重试"
+            extra={[
+              <Space key="actions" direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Button
+                  onClick={handleResend}
+                  size="large"
+                  block
+                  icon={<ReloadOutlined />}
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  返回首页
-                </Link>
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
+                  重新发送验证邮件
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => router.push('/login')}
+                  size="large"
+                  block
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    height: '44px',
+                    fontSize: '16px'
+                  }}
+                >
+                  返回登录
+                </Button>
+                <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                  <Link
+                    href="/"
+                    style={{
+                      color: '#666',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <ArrowLeftOutlined />
+                    返回首页
+                  </Link>
+                </div>
+              </Space>,
+            ]}
+          >
+            <Alert
+              message={
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Text strong>验证失败</Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    {errorMessage}
+                  </Text>
+                </Space>
+              }
+              type="error"
+              showIcon
+              style={{ marginBottom: '16px' }}
+            />
+            <Alert
+              message={
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Text strong>💡 解决方案</Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    您可以重新发送验证邮件，如果问题持续存在，请联系客服获取帮助。
+                  </Text>
+                </Space>
+              }
+              type="info"
+              showIcon
+            />
+          </Result>
+        </Card>
       </div>
     );
   }
@@ -242,8 +302,14 @@ function VerifyEmailForm() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <Spin indicator={<LoadingOutlined style={{ fontSize: 32, color: '#fff' }} spin />} />
       </div>
     }>
       <VerifyEmailForm />

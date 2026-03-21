@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendVerificationEmail } from '@/lib/email-mailersend';
+import { sendVerificationEmail } from '@/lib/email';
 import { randomUUID } from 'crypto';
 
 // 强制动态渲染
@@ -64,14 +64,23 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // 检查邮箱是否已注册
-    const { data: existingUser, error: checkError } = await supabase
-      .from('user_profiles')
-      .select('email')
-      .eq('email', email)
-      .single();
+    // 步骤1: 检查 auth.users 中是否已存在该邮箱（包括被软删除的用户）
+    const { data: existingAuthUsers } = await supabase.auth.admin.listUsers();
+    const existingAuthUser = existingAuthUsers?.users?.find((u) => u.email === email);
 
-    if (existingUser) {
+    // 步骤2: 检查 user_profiles
+    let existingProfile = null;
+    if (existingAuthUser) {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', existingAuthUser.id)
+        .maybeSingle();
+      existingProfile = data;
+    }
+
+    // 如果 auth.users 中存在且有 user_profiles，说明是真正已注册的用户
+    if (existingAuthUser && existingProfile) {
       return NextResponse.json(
         {
           success: false,
@@ -82,6 +91,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 如果 auth.users 中存在但没有 user_profiles，说明是"幽灵"用户（被删除但未清理）
+    if (existingAuthUser && !existingProfile) {
+      console.log('[Register] 检测到幽灵用户，先清理 auth.users 记录:', email);
+      await supabase.auth.admin.deleteUser(existingAuthUser.id);
+      console.log('[Register] ✓ 幽灵用户已清理');
+    }
+
     // 创建用户
     let authData = { user: null, session: null };
     let authError = null;
@@ -90,7 +106,7 @@ export async function POST(request: NextRequest) {
       const result = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: false, // 不自动确认邮箱，需要验证
+        email_confirm: true, // 开发环境：自动确认邮箱
         user_metadata: {
           name: name || email.split('@')[0],
         },
@@ -200,22 +216,36 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create user');
     }
 
-    // user_profiles 表会通过触发器自动创建，但我们需要添加验证令牌
+    // 手动创建 user_profiles（可能已被触发器创建）
     const verificationToken = randomUUID();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小时后过期
 
-    // 更新用户资料，添加验证令牌
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        email_verification_token: verificationToken,
-        verification_expires_at: expiresAt.toISOString(),
-      })
-      .eq('id', authData.user.id);
+    console.log('[Register] 准备创建/更新 user_profiles:', authData.user.id);
 
-    if (updateError) {
-      console.error('Failed to update verification token:', updateError);
-      // 继续执行，不阻止注册流程
+    // 使用 upsert 操作：如果存在就更新，不存在就插入
+    const { error: upsertError } = await supabase
+      .from('user_profiles')
+      .upsert(
+        {
+          id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.name || email.split('@')[0],
+          role: 'user',
+          email_verified: true, // 开发环境：自动验证
+          status: 'active',
+          email_verification_token: verificationToken,
+          verification_expires_at: expiresAt.toISOString(),
+        },
+        {
+          onConflict: 'id', // 主键冲突时更新
+          ignoreDuplicates: false,
+        }
+      );
+
+    if (upsertError) {
+      console.error('[Register] upsert user_profiles 失败:', upsertError);
+    } else {
+      console.log('[Register] ✓ user_profiles 创建/更新成功');
     }
 
     // 记录注册安全日志
@@ -245,14 +275,14 @@ export async function POST(request: NextRequest) {
         : emailResult.developmentMode
           ? '注册成功！开发模式下邮件已跳过（仍需验证邮箱）'
           : '注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件',
-      requireVerification: true, // 始终需要验证
+      requireVerification: false, // 开发环境：不需要验证
       emailSent: emailResult.success,
       developmentMode: emailResult.developmentMode || false,
       user: {
         id: authData.user.id,
         email: authData.user.email,
         name: authData.user.user_metadata?.name,
-        emailVerified: false, // 始终未验证，需要点击邮件链接
+        emailVerified: true, // 开发环境：已自动验证
       },
     });
   } catch (error) {

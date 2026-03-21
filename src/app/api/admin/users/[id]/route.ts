@@ -9,6 +9,175 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * 清理用户所有相关数据的辅助函数
+ */
+async function cleanupUserData(userId: string, supabase: any) {
+  console.log('[Admin Delete User] 开始清理用户数据:', userId);
+
+  // 首先检查 user_profiles 是否存在
+  const { data: existingProfile } = await supabase
+    .from('user_profiles')
+    .select('id, email')
+    .eq('id', userId)
+    .maybeSingle();
+
+  console.log('[Admin Delete User] 检查 user_profiles:', existingProfile);
+
+  // 清理配额操作日志
+  console.log('[Admin Delete User] 清理配额操作日志...');
+  const { error: quotaOpsError } = await supabase
+    .from('quota_operations')
+    .delete()
+    .eq('user_id', userId);
+  if (quotaOpsError) console.warn('[Admin Delete User] 配额操作日志删除失败:', quotaOpsError.message);
+  else console.log('[Admin Delete User] ✓ 配额操作日志已删除');
+
+  // 清理配额使用记录
+  console.log('[Admin Delete User] 清理配额使用记录...');
+  const { error: quotaUsageError } = await supabase
+    .from('quota_usage')
+    .delete()
+    .eq('user_id', userId);
+  if (quotaUsageError) console.warn('[Admin Delete User] 配额使用记录删除失败:', quotaUsageError.message);
+  else console.log('[Admin Delete User] ✓ 配额使用记录已删除');
+
+  // 清理用户配额
+  console.log('[Admin Delete User] 清理用户配额...');
+  const { error: userQuotasError } = await supabase
+    .from('user_quotas')
+    .delete()
+    .eq('user_id', userId);
+  if (userQuotasError) console.warn('[Admin Delete User] 用户配额删除失败:', userQuotasError.message);
+  else console.log('[Admin Delete User] ✓ 用户配额已删除');
+
+  // 清理用户会话
+  console.log('[Admin Delete User] 清理用户会话...');
+  const { error: sessionsError } = await supabase
+    .from('user_sessions')
+    .delete()
+    .eq('user_id', userId);
+  if (sessionsError) console.warn('[Admin Delete User] 用户会话删除失败:', sessionsError.message);
+  else console.log('[Admin Delete User] ✓ 用户会话已删除');
+
+  // 清理安全日志
+  console.log('[Admin Delete User] 清理安全日志...');
+  const { error: securityLogError } = await supabase
+    .from('user_security_log')
+    .delete()
+    .eq('user_id', userId);
+  if (securityLogError) console.warn('[Admin Delete User] 安全日志删除失败:', securityLogError.message);
+  else console.log('[Admin Delete User] ✓ 安全日志已删除');
+
+  // 清理对话消息
+  console.log('[Admin Delete User] 清理对话消息...');
+  const { error: messagesError } = await supabase
+    .from('conversation_messages')
+    .delete()
+    .eq('user_id', userId);
+  if (messagesError) console.warn('[Admin Delete User] 对话消息删除失败:', messagesError.message);
+  else console.log('[Admin Delete User] ✓ 对话消息已删除');
+
+  // 清理PDF对话
+  console.log('[Admin Delete User] 清理PDF对话...');
+  const { error: convError } = await supabase
+    .from('pdf_conversations')
+    .delete()
+    .eq('user_id', userId);
+  if (convError) console.warn('[Admin Delete User] PDF对话删除失败:', convError.message);
+  else console.log('[Admin Delete User] ✓ PDF对话已删除');
+
+  // 清理PDF记录
+  console.log('[Admin Delete User] 清理PDF记录...');
+  const { error: pdfsError } = await supabase
+    .from('user_pdfs')
+    .delete()
+    .eq('user_id', userId);
+  if (pdfsError) console.warn('[Admin Delete User] PDF记录删除失败:', pdfsError.message);
+  else console.log('[Admin Delete User] ✓ PDF记录已删除');
+
+  // 清理用户资料（最后清理，因为其他表可能有外键约束）
+  console.log('[Admin Delete User] 清理用户资料...');
+
+  // 使用 SQL 直接删除，绕过 RLS
+  try {
+    const { data: deleteResult, error: deleteError } = await supabase
+      .rpc('admin_delete_user_profile', {
+        target_user_id: userId
+      });
+
+    if (deleteError) {
+      console.error('[Admin Delete User] ❌ RPC 删除失败:', deleteError);
+
+      // 如果 RPC 失败，尝试逐个删除
+      console.log('[Admin Delete User] 尝试逐个删除表数据...');
+
+      // 删除 quota_operations
+      const { error: e1 } = await supabase.from('quota_operations').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] quota_operations:', e1 ? '失败' : '成功');
+
+      // 删除 quota_usage
+      const { error: e2 } = await supabase.from('quota_usage').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] quota_usage:', e2 ? '失败' : '成功');
+
+      // 删除 user_quotas
+      const { error: e3 } = await supabase.from('user_quotas').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] user_quotas:', e3 ? '失败' : '成功');
+
+      // 删除 user_sessions
+      const { error: e4 } = await supabase.from('user_sessions').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] user_sessions:', e4 ? '失败' : '成功');
+
+      // 删除 user_security_log
+      const { error: e5 } = await supabase.from('user_security_log').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] user_security_log:', e5 ? '失败' : '成功');
+
+      // 删除 conversation_messages
+      const { error: e6 } = await supabase.from('conversation_messages').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] conversation_messages:', e6 ? '失败' : '成功');
+
+      // 删除 pdf_conversations
+      const { error: e7 } = await supabase.from('pdf_conversations').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] pdf_conversations:', e7 ? '失败' : '成功');
+
+      // 删除 user_pdfs
+      const { error: e8 } = await supabase.from('user_pdfs').delete().eq('user_id', userId);
+      console.log('[Admin Delete User] user_pdfs:', e8 ? '失败' : '成功');
+
+      // 删除 user_profiles
+      const { error: e9, count } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId)
+        .select('*', { count: 'exact', head: false });
+      console.log('[Admin Delete User] user_profiles:', e9 ? '失败' : '成功', '删除数量:', count);
+
+      if (e9) {
+        console.error('[Admin Delete User] ❌ 用户资料删除失败:', e9);
+      }
+    } else {
+      console.log('[Admin Delete User] ✓ RPC 删除成功:', deleteResult);
+    }
+  } catch (error) {
+    console.error('[Admin Delete User] ❌ 删除过程出错:', error);
+  }
+
+  // 再次确认是否删除成功
+  const { data: remainingProfile } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (remainingProfile) {
+    console.error('[Admin Delete User] ❌❌❌ 用户资料仍然存在！ID:', remainingProfile.id);
+  } else {
+    console.log('[Admin Delete User] ✓✓✓ 确认用户资料已不存在');
+  }
+
+  console.log('[Admin Delete User] ✓ 用户数据清理完成');
+}
+
 async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     // 验证管理员权限
@@ -27,118 +196,160 @@ async function DELETE(req: NextRequest, { params }: { params: { id: string } }) 
     }
 
     const userId = params.id;
-    console.log('[Admin Delete User] 删除用户:', userId);
+    console.log('[Admin Delete User] 删除用户 ID:', userId);
+    console.log('[Admin Delete User] ID 类型:', typeof userId);
+    console.log('[Admin Delete User] ID 长度:', userId?.length);
 
     const supabase = createAdminClient();
 
-    // 检查用户是否存在
-    const { data: user } = await supabase
+    // 检查用户是否存在，并获取邮箱（用于后续删除 auth.users）
+    const { data: user, error: queryError } = await supabase
       .from('user_profiles')
-      .select('id, name')
+      .select('id, name, email')
       .eq('id', userId)
-      .single();
+      .maybeSingle(); // 使用 maybeSingle 而不是 single，避免 0 行时报错
 
+    console.log('[Admin Delete User] 查询结果:', { user, queryError });
+
+    // 如果 user_profiles 中不存在这个用户
     if (!user) {
+      console.warn('[Admin Delete User] user_profiles 中未找到用户 ID:', userId);
+
+      // 使用 RPC 清理所有可能残留的数据（绕过 RLS）
+      console.log('[Admin Delete User] 使用 RPC 清理残留数据...');
+      try {
+        const { data: deleteResult, error: deleteError } = await supabase
+          .rpc('admin_delete_user_profile', {
+            target_user_id: userId
+          });
+
+        if (deleteError) {
+          console.warn('[Admin Delete User] RPC 清理失败（可能已无数据）:', deleteError.message);
+        } else {
+          console.log('[Admin Delete User] ✓ RPC 清理成功:', deleteResult);
+        }
+      } catch (e) {
+        console.warn('[Admin Delete User] RPC 清理异常:', e);
+      }
+
+      // 然后尝试删除 auth.users
+      console.log('[Admin Delete User] 删除 auth.users...');
+      try {
+        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+
+        if (authDeleteError) {
+          console.error('[Admin Delete User] ❌ Auth删除失败:', authDeleteError);
+          console.error('[Admin Delete User] 错误详情:', JSON.stringify(authDeleteError, null, 2));
+
+          // 如果删除失败，返回错误
+          return NextResponse.json({
+            success: false,
+            error: {
+              code: 'DELETE_AUTH_FAILED',
+              message: '删除 auth.users 失败，可能存在依赖数据',
+              details: authDeleteError.message,
+            },
+          }, { status: 500 });
+        } else {
+          console.log('[Admin Delete User] ✓ auth.users 已删除');
+
+          return NextResponse.json({
+            success: true,
+            message: '用户已删除',
+          });
+        }
+      } catch (authError: any) {
+        console.error('[Admin Delete User] ❌ 删除 auth.users 异常:', authError);
+
+        return NextResponse.json({
+          success: false,
+          error: {
+            code: 'DELETE_ERROR',
+            message: '删除用户失败',
+            details: authError.message,
+          },
+        }, { status: 500 });
+      }
+    }
+
+    console.log('[Admin Delete User] 开始删除用户数据:', userId, '邮箱:', user.email);
+
+    // 步骤1: 使用 RPC 删除所有 public schema 的数据（包括 user_profiles）
+    console.log('[Admin Delete User] 步骤1: 清理所有关联数据...');
+    let rpcSuccess = false;
+
+    try {
+      const { data: deleteResult, error: deleteError } = await supabase
+        .rpc('admin_delete_user_profile', {
+          target_user_id: userId  // 注意参数名是 target_user_id
+        });
+
+      if (deleteError) {
+        console.error('[Admin Delete User] ❌ RPC 删除失败:', deleteError);
+        console.error('[Admin Delete User] 错误详情:', JSON.stringify(deleteError, null, 2));
+      } else {
+        console.log('[Admin Delete User] ✓ RPC 删除成功:', deleteResult);
+        rpcSuccess = true;
+      }
+    } catch (error: any) {
+      console.error('[Admin Delete User] ❌ RPC 删除异常:', error);
+    }
+
+    // 步骤2: 删除 auth.users
+    console.log('[Admin Delete User] 步骤2: 删除 auth.users');
+
+    let authDeleteSuccess = false;
+    let authDeleteError = null;
+
+    try {
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+
+      if (deleteError) {
+        console.error('[Admin Delete User] ❌ Auth删除失败:', deleteError);
+        console.error('[Admin Delete User] 错误详情:', JSON.stringify(deleteError, null, 2));
+        authDeleteError = deleteError;
+      } else {
+        console.log('[Admin Delete User] ✓ auth.users 已删除');
+        authDeleteSuccess = true;
+      }
+    } catch (error: any) {
+      console.error('[Admin Delete User] ❌ 删除 auth.users 异常:', error);
+      authDeleteError = error;
+    }
+
+    // 如果 auth.users 删除失败，整个操作失败
+    if (!authDeleteSuccess) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'NOT_FOUND',
-            message: '用户不存在',
+            code: 'DELETE_AUTH_FAILED',
+            message: '删除 auth.users 失败',
+            details: authDeleteError?.message,
           },
         },
-        { status: 404 }
+        { status: 500 }
+      );
+    }
+    if (!authDeleteSuccess) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DELETE_AUTH_FAILED',
+            message: '删除 auth.users 失败，用户仍可登录',
+            details: authDeleteError?.message,
+          },
+        },
+        { status: 500 }
       );
     }
 
-    console.log('[Admin Delete User] 开始删除用户数据:', userId);
-
-    // 步骤1: 删除用户的 PDF 文件记录（从数据库）
-    const { data: userPdfs } = await supabase.from('user_pdfs').select('id').eq('user_id', userId);
-
-    if (userPdfs && userPdfs.length > 0) {
-      console.log('[Admin Delete User] 删除', userPdfs.length, '个PDF记录');
-      await supabase.from('user_pdfs').delete().eq('user_id', userId);
-    }
-
-    // 步骤2: 删除用户的对话记录
-    const { data: userConversations } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('user_id', userId);
-
-    if (userConversations && userConversations.length > 0) {
-      console.log('[Admin Delete User] 删除', userConversations.length, '条对话记录');
-      await supabase.from('conversations').delete().eq('user_id', userId);
-    }
-
-    // 步骤3: 删除用户资料
-    const { error: profileError } = await supabase.from('user_profiles').delete().eq('id', userId);
-
-    if (profileError) {
-      console.error('[Admin Delete User] Profile删除失败:', profileError);
-    }
-
-    // 步骤4: 删除 auth.users（认证记录）- 这是最重要的
-    console.log('[Admin Delete User] 删除 auth.users 记录, userId:', userId);
-
-    // 先通过邮箱查找用户（因为 user_profiles.id 可能和 auth.users.id 不一致）
-    const { data: profileWithEmail } = await supabase
-      .from('user_profiles')
-      .select('email')
-      .eq('id', userId)
-      .single();
-
-    console.log('[Admin Delete User] 用户邮箱:', profileWithEmail?.email);
-
-    // 列出所有用户，通过邮箱找到对应的 auth.users.id
-    const { data: allUsers, error: listError } = await supabase.auth.admin.listUsers();
-
-    if (listError) {
-      console.error('[Admin Delete User] 列出用户失败:', listError);
-    } else {
-      const targetUser = allUsers.users.find((u) => u.email === profileWithEmail?.email);
-      if (targetUser) {
-        console.log(
-          '[Admin Delete User] 找到 auth 用户, authId:',
-          targetUser.id,
-          'email:',
-          targetUser.email
-        );
-
-        // 使用正确的 auth.users.id 删除
-        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(targetUser.id);
-
-        if (authDeleteError) {
-          console.error('[Admin Delete User] Auth删除失败:', authDeleteError);
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: 'AUTH_DELETE_FAILED',
-                message: `删除认证记录失败: ${authDeleteError.message}`,
-              },
-            },
-            { status: 500 }
-          );
-        }
-
-        console.log('[Admin Delete User] ✓ auth.users 删除成功');
-      } else {
-        console.warn(
-          '[Admin Delete User] auth.users 中未找到邮箱为',
-          profileWithEmail?.email,
-          '的用户'
-        );
-        // 即使 auth.users 中不存在，也继续（可能是游客用户）
-      }
-    }
-
-    console.log('[Admin Delete User] ✓ 用户已删除:', user.name || user.id);
+    console.log('[Admin Delete User] ✓✓✓ 用户已完全删除:', user.name || user.id);
 
     return NextResponse.json({
       success: true,
-      message: '用户已删除',
+      message: '用户已完全删除',
     });
   } catch (error) {
     console.error('[Admin Delete User] Error:', error);

@@ -44,6 +44,8 @@ interface User {
   email: string;
   role: string;
   avatarUrl: string | null;
+  emailVerified: boolean;
+  hasProfile: boolean;
   createdAt: string;
   lastSigninAt: string | null;
   pdfCount: number;
@@ -108,8 +110,20 @@ export default function AdminUsersPage() {
 
   // 删除用户
   const handleDeleteUser = async (userId: string, username: string) => {
+    console.log('[Admin Delete User] 前端准备删除用户:', {
+      userId,
+      userIdType: typeof userId,
+      username,
+    });
+
+    // 乐观删除：立即从前端列表中移除
+    const previousUsers = [...users];
+    setUsers(users.filter((u) => u.id !== userId));
+
     try {
       const token = localStorage.getItem('adminToken');
+
+      console.log('[Admin Delete User] 发送删除请求到:', `/api/admin/users/${userId}`);
 
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
@@ -120,13 +134,21 @@ export default function AdminUsersPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        message.success(`用户 "${username}" 已删除`);
-        fetchUsers(); // 刷新列表
+      console.log('[Admin Delete User] 服务器响应:', data);
+
+      if (data.success || response.status === 404) {
+        // 404 表示用户不存在，可能已经被删除了
+        message.success(data.message || `用户 "${username}" 已删除`);
+        // 刷新列表以确保数据同步
+        await fetchUsers();
       } else {
+        // 删除失败，恢复列表
+        setUsers(previousUsers);
         message.error(data.error?.message || '删除失败');
       }
     } catch (error) {
+      // 删除失败，恢复列表
+      setUsers(previousUsers);
       console.error('[Admin Delete] Error:', error);
       message.error('删除失败');
     }
@@ -186,10 +208,17 @@ export default function AdminUsersPage() {
       title: '邮箱',
       dataIndex: 'email',
       key: 'email',
-      render: (text) => (
-        <Text copyable style={{ fontSize: 12 }}>
-          {text || '-'}
-        </Text>
+      render: (text, record) => (
+        <Space>
+          <Text copyable style={{ fontSize: 12 }}>
+            {text || '-'}
+          </Text>
+          {!record.emailVerified && (
+            <Tag color="warning" style={{ fontSize: 11 }}>
+              未验证
+            </Tag>
+          )}
+        </Space>
       ),
     },
     {
@@ -267,6 +296,7 @@ export default function AdminUsersPage() {
     total: users.length,
     admins: users.filter((u) => u.role === 'admin').length,
     users: users.filter((u) => u.role === 'user').length,
+    unverified: users.filter((u) => !u.emailVerified).length,
     totalPDFs: users.reduce((sum, u) => sum + u.pdfCount, 0),
   };
 
@@ -295,7 +325,7 @@ export default function AdminUsersPage() {
 
       {/* Statistics */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+        <Col span={5}>
           <Card>
             <Statistic
               title="总用户数"
@@ -305,17 +335,26 @@ export default function AdminUsersPage() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={5}>
           <Card>
             <Statistic title="管理员" value={stats.admins} valueStyle={{ color: '#cf1322' }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={5}>
           <Card>
             <Statistic title="普通用户" value={stats.users} valueStyle={{ color: '#1890ff' }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={5}>
+          <Card>
+            <Statistic
+              title="未验证邮箱"
+              value={stats.unverified}
+              valueStyle={{ color: stats.unverified > 0 ? '#faad14' : '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
           <Card>
             <Statistic
               title="总 PDF 数"

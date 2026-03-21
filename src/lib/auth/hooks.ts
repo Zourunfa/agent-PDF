@@ -58,14 +58,37 @@ export function useAuth() {
               }));
             } else if (response.status === 401 || response.status === 403) {
               // 用户不存在或被封禁，自动退出登录
-              console.error('[Auth] User not found or suspended, signing out...');
+              const errorMessage = data.error === 'USER_DELETED'
+                ? '您的账户已被删除，请重新注册'
+                : data.message || '用户不存在或已被封禁';
+
+              console.error('[Auth] User not found or suspended, signing out...', { error: data.error });
               await supabase.auth.signOut();
+
               setState({
                 user: null,
                 profile: null,
                 loading: false,
-                error: data.message || '用户不存在或已被封禁',
+                error: errorMessage,
               });
+
+              // 如果是用户被删除，显示提示并跳转到注册页
+              if (data.error === 'USER_DELETED') {
+                if (typeof window !== 'undefined') {
+                  // 使用 message 显示提示
+                  const { message } = await import('antd');
+                  message.warning({
+                    content: '您的账户已被删除，请重新注册',
+                    duration: 5,
+                    key: 'user-deleted',
+                  });
+
+                  // 延迟后跳转到注册页
+                  setTimeout(() => {
+                    window.location.href = '/register';
+                  }, 2000);
+                }
+              }
             }
           } catch (error) {
             console.error('Error fetching profile:', error);
@@ -114,14 +137,36 @@ export function useAuth() {
             }));
           } else if (response.status === 401 || response.status === 403) {
             // 用户不存在或被封禁，自动退出登录
-            console.error('[Auth] User not found or suspended, signing out...');
+            const errorMessage = data.error === 'USER_DELETED'
+              ? '您的账户已被删除，请重新注册'
+              : data.message || '用户不存在或已被封禁';
+
+            console.error('[Auth] User not found or suspended, signing out...', { error: data.error });
             await supabase.auth.signOut();
+
             setState({
               user: null,
               profile: null,
               loading: false,
-              error: data.message || '用户不存在或已被封禁',
+              error: errorMessage,
             });
+
+            // 如果是用户被删除，显示提示并跳转到注册页
+            if (data.error === 'USER_DELETED') {
+              if (typeof window !== 'undefined') {
+                import('antd').then(({ message }) => {
+                  message.warning({
+                    content: '您的账户已被删除，请重新注册',
+                    duration: 5,
+                    key: 'user-deleted',
+                  });
+
+                  setTimeout(() => {
+                    window.location.href = '/register';
+                  }, 2000);
+                });
+              }
+            }
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -141,6 +186,26 @@ export function useAuth() {
     };
   }, [supabase]);
 
+  // 手动刷新用户信息
+  const refreshProfile = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+
+      if (response.ok && data.success && data.user) {
+        setState((prev) => ({
+          ...prev,
+          profile: data.user,
+        }));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      return false;
+    }
+  };
+
   return {
     user: state.user,
     profile: state.profile,
@@ -149,5 +214,6 @@ export function useAuth() {
     isAuthenticated: !!state.user,
     isAdmin: state.profile?.role === 'admin',
     isPremium: state.profile?.role === 'premium' || state.profile?.role === 'admin',
+    refreshProfile,
   };
 }

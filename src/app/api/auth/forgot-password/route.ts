@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendPasswordResetEmail } from '@/lib/email-mailersend';
+import { sendPasswordResetEmail } from '@/lib/email';
 import { randomUUID } from 'crypto';
 
 // 强制动态渲染

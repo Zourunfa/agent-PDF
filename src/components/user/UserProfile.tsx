@@ -50,6 +50,18 @@ export function UserProfile() {
   const [emailSending, setEmailSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [profileData, setProfileData] = useState<UserProfileData>({});
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 检测是否为移动端
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (user && profile) {
@@ -187,10 +199,10 @@ export function UserProfile() {
   };
 
   return (
-    <div style={{ padding: 32 }}>
+    <div style={{ padding: isMobile ? 20 : 32 }}>
       {/* 页面标题 */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, marginBottom: 8, color: '#1E1B4B' }}>
+      <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+        <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, margin: 0, marginBottom: 8, color: '#1E1B4B' }}>
           个人资料
         </h1>
         <p style={{ fontSize: 14, color: '#6B7280', margin: 0 }}>查看和编辑您的个人信息</p>
