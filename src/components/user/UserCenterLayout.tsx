@@ -45,6 +45,39 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 启用页面级滚动（强制覆盖高度限制）
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const nextDiv = document.getElementById('__next');
+
+    // 保存原始样式值
+    const originalHtmlHeight = html.style.height;
+    const originalBodyHeight = body.style.height;
+    const originalBodyOverflow = body.style.overflow;
+    const originalNextHeight = nextDiv?.style.height || '';
+
+    // 添加 class 并强制覆盖容器高度
+    document.body.classList.add('page-scrollable');
+    html.style.height = 'auto';
+    body.style.height = 'auto';
+    body.style.overflowY = 'auto';
+    if (nextDiv) {
+      nextDiv.style.height = 'auto';
+    }
+
+    // 清理：恢复原始值
+    return () => {
+      document.body.classList.remove('page-scrollable');
+      html.style.height = originalHtmlHeight;
+      body.style.height = originalBodyHeight;
+      body.style.overflow = originalBodyOverflow;
+      if (nextDiv) {
+        nextDiv.style.height = originalNextHeight;
+      }
+    };
+  }, []);
+
   const menuItems = [
     {
       key: '/user-center/profile',
@@ -168,53 +201,16 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
   );
 
   return (
-    <>
-      {/* 自定义滚动条样式 */}
-      <style jsx global>{`
-        /* 自定义滚动条样式 */
-        ::-webkit-scrollbar {
-          width: 8px;
-        height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.05);
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: rgba(99, 102, 241, 0.3);
-          border-radius: 4px;
-          transition: background 0.3s ease;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(99, 102, 241, 0.5);
-        }
-
-        /* 平滑滚动 */
-        * {
-          scroll-behavior: smooth;
-        }
-
-        /* 确保页面可以滚动 */
-        body, html {
-          overflow-x: hidden;
-        }
-      `}</style>
-
-      <Layout
-        style={{
-          minHeight: 'calc(100vh - 64px)',
-          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-        }}
-      >
+    <Layout
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+      }}
+    >
       <Content
         style={{
           padding: isMobile ? '16px' : '24px',
-          overflowY: 'auto',  // ✅ 允许 Content 垂直滚动
-          overflowX: 'hidden', // 隐藏水平滚动条
-          maxHeight: 'calc(100vh - 64px)', // 限制最大高度
+          background: 'transparent',
         }}
       >
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -281,8 +277,7 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
                   borderRadius: isMobile ? 12 : 16,
                   border: '1px solid rgba(255, 255, 255, 0.8)',
                   boxShadow: '0 8px 32px rgba(99, 102, 241, 0.08)',
-                  minHeight: isMobile ? 400 : 600,
-                  // ✅ 移除内部容器的滚动限制，让外层 Content 处理滚动
+                  padding: isMobile ? 16 : 24,
                 }}
               >
                 {children}
@@ -311,6 +306,5 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
         {mobileMenuContent}
       </Drawer>
     </Layout>
-    </>
   );
 }
