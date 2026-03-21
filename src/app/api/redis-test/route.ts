@@ -5,6 +5,8 @@
 import { NextResponse } from "next/server";
 import { checkRedisConnection } from "@/lib/storage/redis-cache";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     console.log('[Redis Test] Testing connection...');

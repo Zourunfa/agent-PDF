@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { formatErrorResponse } from "@/lib/utils/errors";
 import { getAllPDFFiles } from "@/lib/storage/pdf-files";
 
+// Force dynamic rendering to avoid build-time execution
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const pdfs = getAllPDFFiles();
