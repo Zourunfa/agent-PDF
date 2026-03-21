@@ -2,10 +2,10 @@
  * PDF Context Provider
  */
 
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useCallback } from "react";
-import { PDFFile, ParseStatus, UploadStatus } from "@/types/pdf";
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { PDFFile, ParseStatus, UploadStatus } from '@/types/pdf';
 
 interface PDFContextType {
   pdfs: Map<string, PDFFile>;
@@ -27,7 +27,7 @@ const PDFContext = createContext<PDFContextType | null>(null);
 export function usePDF() {
   const context = useContext(PDFContext);
   if (!context) {
-    throw new Error("usePDF must be used within PDFProvider");
+    throw new Error('usePDF must be used within PDFProvider');
   }
   return context;
 }
@@ -47,26 +47,48 @@ export function PDFProvider({ children }: PDFProviderProps) {
     setParseStatus((prev) => new Map(prev).set(pdf.id, pdf.parseStatus));
   }, []);
 
-  const removePDF = useCallback((id: string) => {
-    setPdfs((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    setUploadProgress((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    setParseStatus((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    if (activePdfId === id) {
-      setActivePdfId(null);
-    }
-  }, [activePdfId]);
+  const removePDF = useCallback(
+    async (id: string) => {
+      try {
+        // Call API to delete PDF
+        const response = await fetch(`/api/pdfs/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('[PDFContext] Failed to delete PDF:', error);
+          throw new Error(error.error?.message || '删除失败');
+        }
+
+        console.log('[PDFContext] PDF deleted successfully:', id);
+      } catch (error) {
+        console.error('[PDFContext] Error deleting PDF:', error);
+        throw error;
+      } finally {
+        // Always clear local state
+        setPdfs((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setUploadProgress((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setParseStatus((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        if (activePdfId === id) {
+          setActivePdfId(null);
+        }
+      }
+    },
+    [activePdfId]
+  );
 
   const setActivePdf = useCallback((id: string | null) => {
     setActivePdfId(id);

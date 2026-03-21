@@ -2,13 +2,10 @@
  * Markdown Renderer - Ant Design Style
  */
 
-"use client";
+'use client';
 
-import React from "react";
-import ReactMarkdown from "react-markdown";
-import { Typography } from "antd";
-
-const { Text, Title, Paragraph } = Typography;
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface MarkdownRendererProps {
   content: string;
@@ -28,9 +25,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   backgroundColor: '#F3F4F6',
                   padding: '2px 6px',
                   borderRadius: 4,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontFamily: 'monospace',
-                  color: '#EF4444'
+                  color: '#EF4444',
                 }}
                 {...rest}
               >
@@ -45,14 +42,14 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   overflow: 'auto',
                   border: '1px solid #E5E7EB',
                   marginTop: 8,
-                  marginBottom: 8
+                  marginBottom: 8,
                 }}
               >
                 <code
                   style={{
-                    fontSize: 12,
+                    fontSize: 13,
                     fontFamily: 'monospace',
-                    color: '#374151'
+                    color: '#374151',
                   }}
                   {...rest}
                 >
@@ -68,19 +65,44 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return <ol style={{ paddingLeft: 20, marginTop: 8, marginBottom: 8 }}>{children}</ol>;
           },
           li({ children }) {
-            return <li style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 4 }}>{children}</li>;
+            return <li style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 4 }}>{children}</li>;
           },
           p({ children }) {
-            return <p style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8, marginBottom: 8 }}>{children}</p>;
+            return (
+              <p style={{ fontSize: 14, lineHeight: 1.6, marginTop: 8, marginBottom: 8 }}>
+                {children}
+              </p>
+            );
           },
           h1({ children }) {
-            return <h3 style={{ fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 8, borderBottom: '1px solid #E5E7EB', paddingBottom: 8 }}>{children}</h3>;
+            return (
+              <h3
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  marginTop: 16,
+                  marginBottom: 8,
+                  borderBottom: '1px solid #E5E7EB',
+                  paddingBottom: 8,
+                }}
+              >
+                {children}
+              </h3>
+            );
           },
           h2({ children }) {
-            return <h4 style={{ fontSize: 15, fontWeight: 600, marginTop: 12, marginBottom: 6 }}>{children}</h4>;
+            return (
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginTop: 12, marginBottom: 6 }}>
+                {children}
+              </h4>
+            );
           },
           h3({ children }) {
-            return <h5 style={{ fontSize: 14, fontWeight: 600, marginTop: 10, marginBottom: 6 }}>{children}</h5>;
+            return (
+              <h5 style={{ fontSize: 14, fontWeight: 600, marginTop: 10, marginBottom: 6 }}>
+                {children}
+              </h5>
+            );
           },
           strong({ children }) {
             return <strong style={{ fontWeight: 600 }}>{children}</strong>;
@@ -110,7 +132,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   marginTop: 8,
                   marginBottom: 8,
                   color: '#6B7280',
-                  fontStyle: 'italic'
+                  fontStyle: 'italic',
                 }}
               >
                 {children}
@@ -124,8 +146,8 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   style={{
                     width: '100%',
                     borderCollapse: 'collapse',
-                    fontSize: 12,
-                    border: '1px solid #E5E7EB'
+                    fontSize: 13,
+                    border: '1px solid #E5E7EB',
                   }}
                 >
                   {children}
@@ -149,7 +171,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   padding: '8px 12px',
                   textAlign: 'left',
                   fontWeight: 600,
-                  borderBottom: '2px solid #E5E7EB'
+                  borderBottom: '2px solid #E5E7EB',
                 }}
               >
                 {children}
@@ -158,9 +180,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           },
           td({ children }) {
             return (
-              <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6' }}>
-                {children}
-              </td>
+              <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6' }}>{children}</td>
             );
           },
         }}
