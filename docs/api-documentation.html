@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF AI Chat - API 接口文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            background: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .architecture-diagram {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow-x: auto;
+        }
+
+        .architecture-diagram h2 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            color: #333;
+        }
+
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            min-width: 800px;
+        }
+
+        .flow-section {
+            position: relative;
+        }
+
+        .flow-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 16px;
+            padding-left: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .flow-entity {
+            flex: 1;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .flow-entity:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .flow-entity.client {
+            background: linear-gradient(135deg, #FFE5E5 0%, #FFD1D1 100%);
+            border-color: #FF6B6B;
+        }
+
+        .flow-entity.api {
+            background: linear-gradient(135deg, #E5F3FF 0%, #D1E9FF 100%);
+            border-color: #4A90E2;
+        }
+
+        .flow-entity.auth {
+            background: linear-gradient(135deg, #FFF4E5 0%, #FFE8CC 100%);
+            border-color: #FF9500;
+        }
+
+        .flow-entity.database {
+            background: linear-gradient(135deg, #E5FFE9 0%, #CCF5D1 100%);
+            border-color: #34C759;
+        }
+
+        .flow-entity.storage {
+            background: linear-gradient(135deg, #F3E5FF 0%, #E9CCFF 100%);
+            border-color: #AF52DE;
+        }
+
+        .flow-entity.ai {
+            background: linear-gradient(135deg, #FFE5F7 0%, #FFD1F2 100%);
+            border-color: #FF2D92;
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: #667eea;
+            flex-shrink: 0;
+        }
+
+        .api-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .api-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        .api-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .api-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .api-method {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .api-method.get { background: #E3F2FD; color: #1976D2; }
+        .api-method.post { background: #E8F5E9; color: #388E3C; }
+        .api-method.put { background: #FFF3E0; color: #F57C00; }
+        .api-method.delete { background: #FFEBEE; color: #D32F2F; }
+        .api-method.patch { background: #F3E5F5; color: #7B1FA2; }
+
+        .api-path {
+            flex: 1;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .api-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .api-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .api-tag {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .api-tag.auth-required {
+            background: #FFF3E0;
+            color: #F57C00;
+        }
+
+        .api-tag.public {
+            background: #E8F5E9;
+            color: #388E3C;
+        }
+
+        .api-tag.admin {
+            background: #FFEBEE;
+            color: #D32F2F;
+        }
+
+        .api-tag.guest {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+
+        .api-section {
+            margin-top: 16px;
+        }
+
+        .api-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .api-code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+
+        .api-code .key {
+            color: #9CDCFE;
+        }
+
+        .api-code .string {
+            color: #CE9178;
+        }
+
+        .api-code .number {
+            color: #B5CEA8;
+        }
+
+        .api-code .boolean {
+            color: #569CD6;
+        }
+
+        .api-code .comment {
+            color: #6A9955;
+        }
+
+        .error-codes {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-codes h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .error-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .error-table th,
+        .error-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .error-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error-code {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box input {
+            width: 100%;
+            border: none;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-box input::placeholder {
+            color: #999;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .api-card {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📚 PDF AI Chat API 文档</h1>
+            <p>完整的 API 接口参考文档 | 版本 1.0.0</p>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="number">48</div>
+                    <div class="label">API 端点</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">6</div>
+                    <div class="label">功能模块</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">100%</div>
+                    <div class="label">TypeScript</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">REST</div>
+                    <div class="label">API 架构</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('architecture')">📊 系统架构</button>
+            <button class="nav-tab" onclick="showTab('auth')">🔐 认证授权</button>
+            <button class="nav-tab" onclick="showTab('user')">👤 用户管理</button>
+            <button class="nav-tab" onclick="showTab('pdf')">📄 PDF 处理</button>
+            <button class="nav-tab" onclick="showTab('chat')">💬 AI 聊天</button>
+            <button class="nav-tab" onclick="showTab('admin')">⚙️ 管理后台</button>
+            <button class="nav-tab" onclick="showTab('guest')">🎭 游客系统</button>
+            <button class="nav-tab" onclick="showTab('errors')">❌ 错误码</button>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div id="architecture" class="tab-content active">
+            <div class="architecture-diagram">
+                <h2>系统架构图</h2>
+                <div class="flow-diagram">
+                    <!-- 认证流程 -->
+                    <div class="flow-section">
+                        <div class="flow-section-title">🔐 用户认证流程</div>
+                        <div class="flow-row">
+                            <div class="flow-entity client">客户端<br><small>Frontend</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity api">/api/auth/*<br><small>Next.js API</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity auth">Supabase Auth<br><small>auth.users</small></div>
+                            <div class="flow-arrow">↔</div>
+                            <div class="flow-entity database">user_profiles<br><small>用户资料</small></div>
+                        </div>
+                    </div>
+
+                    <!-- PDF 处理流程 -->
+                    <div class="flow-section">
+                        <div class="flow-section-title">📄 PDF 处理流程</div>
+                        <div class="flow-row">
+                            <div class="flow-entity client">客户端<br><small>上传 PDF</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity api">/api/upload<br><small>验证&解析</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity storage">Supabase Storage<br><small>存储文件</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity database">pdf_files<br><small>文件记录</small></div>
+                        </div>
+                    </div>
+
+                    <!-- AI 聊天流程 -->
+                    <div class="flow-section">
+                        <div class="flow-section-title">💬 AI 聊天流程</div>
+                        <div class="flow-row">
+                            <div class="flow-entity client">客户端<br><small>发送消息</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity api">/api/chat<br><small>SSE 流式</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity ai">Claude AI<br><small>LLM</small></div>
+                            <div class="flow-arrow">↔</div>
+                            <div class="flow-entity database">向量检索<br><small>RAG</small></div>
+                        </div>
+                    </div>
+
+                    <!-- 配额管理流程 -->
+                    <div class="flow-section">
+                        <div class="flow-section-title">📊 配额管理流程</div>
+                        <div class="flow-row">
+                            <div class="flow-entity client">用户操作<br><small>上传/聊天</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity api">配额检查<br><small>/api/quota</small></div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-entity database">quota_usage<br><small>使用记录</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth Tab -->
+        <div id="auth" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索认证相关 API..." id="authSearch" onkeyup="filterAPIs('auth')">
+            </div>
+            <div class="api-list" id="authList">
+                <!-- 注册 -->
+                <div class="api-card" data-keywords="register signup sign up 注册 新用户">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/register</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">用户注册，创建新账户并发送验证邮件</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"email"</span>: <span class="string">"user@example.com"</span>,
+    <span class="key">"password"</span>: <span class="string">"password123"</span>,
+    <span class="key">"name"</span>: <span class="string">"张三"</span> <span class="comment">// 可选</span>
+}
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"message"</span>: <span class="string">"注册成功"</span>,
+    <span class="key">"emailSent"</span>: <span class="boolean">true</span>,
+    <span class="key">"developmentMode"</span>: <span class="boolean">false</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 登录 -->
+                <div class="api-card" data-keywords="login sign in 登录">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/login</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">用户登录，返回访问令牌</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"email"</span>: <span class="string">"user@example.com"</span>,
+    <span class="key">"password"</span>: <span class="string">"password123"</span>
+}
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"message"</span>: <span class="string">"登录成功"</span>,
+    <span class="key">"user"</span>: {
+        <span class="key">"id"</span>: <span class="string">"uuid"</span>,
+        <span class="key">"email"</span>: <span class="string">"user@example.com"</span>,
+        <span class="key">"name"</span>: <span class="string">"张三"</span>,
+        <span class="key">"role"</span>: <span class="string">"user"</span>,
+        <span class="key">"emailVerified"</span>: <span class="boolean">true</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 登出 -->
+                <div class="api-card" data-keywords="logout sign out 登出 退出">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/logout</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">用户登出，清除会话</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"message"</span>: <span class="string">"登出成功"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取当前用户 -->
+                <div class="api-card" data-keywords="me profile current user 获取用户信息">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/auth/me</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取当前登录用户的信息</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"user"</span>: {
+        <span class="key">"id"</span>: <span class="string">"uuid"</span>,
+        <span class="key">"email"</span>: <span class="string">"user@example.com"</span>,
+        <span class="key">"name"</span>: <span class="string">"张三"</span>,
+        <span class="key">"role"</span>: <span class="string">"user"</span>,
+        <span class="key">"avatar"</span>: <span class="string">"https://..."</span>,
+        <span class="key">"emailVerified"</span>: <span class="boolean">true</span>,
+        <span class="key">"createdAt"</span>: <span class="string">"2024-01-01T00:00:00Z"</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 验证邮箱 -->
+                <div class="api-card" data-keywords="verify email 验证邮箱">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/verify-email</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">验证用户邮箱</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"token"</span>: <span class="string">"verification_token"</span>
+}
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"message"</span>: <span class="string">"邮箱验证成功"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 重新发送验证邮件 -->
+                <div class="api-card" data-keywords="resend verification email 重发验证邮件">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/resend-verification</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">重新发送验证邮件</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"email"</span>: <span class="string">"user@example.com"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 忘记密码 -->
+                <div class="api-card" data-keywords="forgot password 忘记密码">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/forgot-password</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">发送密码重置邮件</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"email"</span>: <span class="string">"user@example.com"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 重置密码 -->
+                <div class="api-card" data-keywords="reset password 重置密码">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/auth/reset-password</span>
+                        <span class="api-tag public">公开</span>
+                    </div>
+                    <div class="api-description">使用令牌重置密码</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"token"</span>: <span class="string">"reset_token"</span>,
+    <span class="key">"password"</span>: <span class="string">"new_password123"</span>
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Tab -->
+        <div id="user" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索用户管理 API..." id="userSearch" onkeyup="filterAPIs('user')">
+            </div>
+            <div class="api-list" id="userList">
+                <!-- 更新用户资料 -->
+                <div class="api-card" data-keywords="update profile 更新资料 修改用户名">
+                    <div class="api-header">
+                        <span class="api-method put">PUT</span>
+                        <span class="api-path">/api/user/profile</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">更新用户资料</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"name"</span>: <span class="string">"新用户名"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上传头像 -->
+                <div class="api-card" data-keywords="avatar upload 上传头像">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/user/avatar</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">上传用户头像</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+Content-Type: <span class="string">multipart/form-data</span>
+{
+    <span class="key">"avatar"</span>: <span class="string">&lt;File&gt;</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 修改密码 -->
+                <div class="api-card" data-keywords="change password 修改密码">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/user/change-password</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">修改当前用户密码</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"currentPassword"</span>: <span class="string">"old_password"</span>,
+    <span class="key">"newPassword"</span>: <span class="string">"new_password"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户统计 -->
+                <div class="api-card" data-keywords="stats statistics 统计数据">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/user/stats</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取用户使用统计数据</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"stats"</span>: {
+        <span class="key">"totalUploads"</span>: <span class="number">10</span>,
+        <span class="key">"totalChats"</span>: <span class="number">50</span>,
+        <span class="key">"quotaUsed"</span>: <span class="number">5</span>,
+        <span class="key">"quotaLimit"</span>: <span class="number">20</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PDF Tab -->
+        <div id="pdf" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索 PDF 处理 API..." id="pdfSearch" onkeyup="filterAPIs('pdf')">
+            </div>
+            <div class="api-list" id="pdfList">
+                <!-- 上传 PDF -->
+                <div class="api-card" data-keywords="upload pdf 上传 文件">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/upload</span>
+                        <span class="api-tag guest">游客/用户</span>
+                    </div>
+                    <div class="api-description">上传 PDF 文件（支持游客和登录用户）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+Content-Type: <span class="string">multipart/form-data</span>
+{
+    <span class="key">"file"</span>: <span class="string">&lt;File&gt;</span>
+}
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"fileId"</span>: <span class="string">"pdf_uuid"</span>,
+    <span class="key">"filename"</span>: <span class="string">"document.pdf"</span>,
+    <span class="key">"status"</span>: <span class="string">"parsing"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取 PDF 列表 -->
+                <div class="api-card" data-keywords="list pdfs 获取列表">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/pdfs/list</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取用户上传的 PDF 列表</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"pdfs"</span>: [
+        {
+            <span class="key">"id"</span>: <span class="string">"uuid"</span>,
+            <span class="key">"filename"</span>: <span class="string">"document.pdf"</span>,
+            <span class="key">"status"</span>: <span class="string">"completed"</span>,
+            <span class="key">"createdAt"</span>: <span class="string">"2024-01-01T00:00:00Z"</span>
+        }
+    ]
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取 PDF 详情 -->
+                <div class="api-card" data-keywords="pdf detail details 详情">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/pdfs/[id]</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取指定 PDF 的详细信息</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"pdf"</span>: {
+        <span class="key">"id"</span>: <span class="string">"uuid"</span>,
+        <span class="key">"filename"</span>: <span class="string">"document.pdf"</span>,
+        <span class="key">"pageCount"</span>: <span class="number">10</span>,
+        <span class="key">"status"</span>: <span class="string">"completed"</span>,
+        <span class="key">"content"</span>: <span class="string">"parsed text..."</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 删除 PDF -->
+                <div class="api-card" data-keywords="delete pdf remove 删除">
+                    <div class="api-header">
+                        <span class="api-method delete">DELETE</span>
+                        <span class="api-path">/api/pdfs/[id]</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">删除指定的 PDF 文件</div>
+                </div>
+
+                <!-- 获取对话历史 -->
+                <div class="api-card" data-keywords="conversation history messages 对话历史">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/pdfs/[id]/conversations</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取指定 PDF 的对话历史</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"conversations"</span>: [
+        {
+            <span class="key">"id"</span>: <span class="string">"conv_uuid"</span>,
+            <span class="key">"messages"</span>: [
+                {<span class="key">"role"</span>: <span class="string">"user"</span>, <span class="key">"content"</span>: <span class="string">"问题"</span>},
+                {<span class="key">"role"</span>: <span class="string">"assistant"</span>, <span class="key">"content"</span>: <span class="string">"回答"</span>}
+            ]
+        }
+    ]
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 手动输入文本 -->
+                <div class="api-card" data-keywords="manual text input 手动输入">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/manual-text</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">手动输入文本创建临时文档（用于聊天）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"text"</span>: <span class="string">"要分析的文本内容..."</span>,
+    <span class="key">"title"</span>: <span class="string">"文档标题"</span>
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="chat" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索 AI 聊天 API..." id="chatSearch" onkeyup="filterAPIs('chat')">
+            </div>
+            <div class="api-list" id="chatList">
+                <!-- AI 聊天 -->
+                <div class="api-card" data-keywords="chat ai message conversation 聊天 对话">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/chat</span>
+                        <span class="api-tag guest">游客/用户</span>
+                    </div>
+                    <div class="api-description">与 AI 进行对话（SSE 流式响应）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"message"</span>: <span class="string">"用户的问题..."</span>,
+    <span class="key">"pdfId"</span>: <span class="string">"pdf_uuid"</span>, <span class="comment">// 可选</span>
+    <span class="key">"conversationId"</span>: <span class="string">"conv_uuid"</span>, <span class="comment">// 可选</span>
+    <span class="key">"model"</span>: <span class="string">"claude-3-5-sonnet-20241022"</span> <span class="comment">// 可选</span>
+}
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应 (SSE 流)</div>
+                        <div class="api-code">
+event: message
+data: {"type":"content","text":"部分回答..."}
+
+event: message
+data: {"type":"usage","inputTokens":100,"outputTokens":200}
+
+event: done
+data: {"type":"end"}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取文件对话列表 -->
+                <div class="api-card" data-keywords="conversation list 对话列表">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/pdfs/[id]/conversations</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取文件的所有对话记录</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div id="admin" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索管理后台 API..." id="adminSearch" onkeyup="filterAPIs('admin')">
+            </div>
+            <div class="api-list" id="adminList">
+                <!-- 管理员登录 -->
+                <div class="api-card" data-keywords="admin login 管理员登录">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/admin/login</span>
+                        <span class="api-tag admin">管理员</span>
+                    </div>
+                    <div class="api-description">管理员登录（需要 admin 角色）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"email"</span>: <span class="string">"admin@example.com"</span>,
+    <span class="key">"password"</span>: <span class="string">"admin_password"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取用户列表 -->
+                <div class="api-card" data-keywords="users list 获取用户列表">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/admin/users</span>
+                        <span class="api-tag admin">管理员</span>
+                    </div>
+                    <div class="api-description">获取所有用户列表（支持分页）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">查询参数</div>
+                        <div class="api-code">
+?page=1&limit=20&search=email@example.com
+                        </div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"users"</span>: [<span class="comment">/* 用户列表 */</span>],
+    <span class="key">"pagination"</span>: {
+        <span class="key">"page"</span>: <span class="number">1</span>,
+        <span class="key">"limit"</span>: <span class="number">20</span>,
+        <span class="key">"total"</span>: <span class="number">100</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 获取用户详情 -->
+                <div class="api-card" data-keywords="user detail details 获取用户详情">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/admin/users/[id]</span>
+                        <span class="api-tag admin">管理员</span>
+                    </div>
+                    <div class="api-description">获取指定用户的详细信息</div>
+                </div>
+
+                <!-- 更新用户 -->
+                <div class="api-card" data-keywords="update user 更新用户信息">
+                    <div class="api-header">
+                        <span class="api-method patch">PATCH</span>
+                        <span class="api-path">/api/admin/users/[id]</span>
+                        <span class="api-tag admin">管理员</span>
+                    </div>
+                    <div class="api-description">更新用户信息（角色、状态等）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"name"</span>: <span class="string">"新用户名"</span>, <span class="comment">// 可选</span>
+    <span class="key">"role"</span>: <span class="string">"premium"</span>, <span class="comment">// 可选</span>
+    <span class="key">"status"</span>: <span class="string">"suspended"</span> <span class="comment">// 可选</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 删除用户 -->
+                <div class="api-card" data-keywords="delete user remove 删除用户">
+                    <div class="api-header">
+                        <span class="api-method delete">DELETE</span>
+                        <span class="api-path">/api/admin/users/[id]</span>
+                        <span class="api-tag admin">管理员</span>
+                    </div>
+                    <div class="api-description">删除指定用户（包括所有相关数据）</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"message"</span>: <span class="string">"用户已成功删除"</span>
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配额统计 -->
+                <div class="api-card" data-keywords="quota stats 配额统计">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/quota/stats</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">获取配额使用统计</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"quota"</span>: {
+        <span class="key">"limit"</span>: <span class="number">20</span>,
+        <span class="key">"used"</span>: <span class="number">5</span>,
+        <span class="key">"remaining"</span>: <span class="number">15</span>
+    },
+    <span class="key">"daily"</span>: {
+        <span class="key">"limit"</span>: <span class="number">50</span>,
+        <span class="key">"used"</span>: <span class="number">10</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guest Tab -->
+        <div id="guest" class="tab-content">
+            <div class="search-box">
+                <input type="text" placeholder="🔍 搜索游客系统 API..." id="guestSearch" onkeyup="filterAPIs('guest')">
+            </div>
+            <div class="api-list" id="guestList">
+                <!-- 游客配额检查 -->
+                <div class="api-card" data-keywords="guest quota check 配额检查">
+                    <div class="api-header">
+                        <span class="api-method get">GET</span>
+                        <span class="api-path">/api/guest/quota</span>
+                        <span class="api-tag guest">游客</span>
+                    </div>
+                    <div class="api-description">检查游客使用配额</div>
+                    <div class="api-section">
+                        <div class="api-section-title">响应</div>
+                        <div class="api-code">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"quota"</span>: {
+        <span class="key">"limit"</span>: <span class="number">3</span>,
+        <span class="key">"used"</span>: <span class="number">1</span>,
+        <span class="key">"remaining"</span>: <span class="number">2</span>
+    }
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 游客使用追踪 -->
+                <div class="api-card" data-keywords="guest track usage 追踪使用">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/guest/track</span>
+                        <span class="api-tag guest">游客</span>
+                    </div>
+                    <div class="api-description">记录游客使用情况（内部调用）</div>
+                </div>
+
+                <!-- 游客迁移 -->
+                <div class="api-card" data-keywords="guest migrate 转正 迁移">
+                    <div class="api-header">
+                        <span class="api-method post">POST</span>
+                        <span class="api-path">/api/guest/migrate</span>
+                        <span class="api-tag auth-required">需要认证</span>
+                    </div>
+                    <div class="api-description">游客数据迁移到注册用户</div>
+                    <div class="api-section">
+                        <div class="api-section-title">请求体</div>
+                        <div class="api-code">
+{
+    <span class="key">"guestId"</span>: <span class="string">"guest_identifier"</span>
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Codes Tab -->
+        <div id="errors" class="tab-content">
+            <div class="error-codes">
+                <h3>❌ 错误码参考</h3>
+                <table class="error-table">
+                    <thead>
+                        <tr>
+                            <th>错误码</th>
+                            <th>HTTP 状态</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="error-code">VALIDATION_ERROR</span></td>
+                            <td>400</td>
+                            <td>请求参数验证失败</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">INVALID_EMAIL</span></td>
+                            <td>400</td>
+                            <td>邮箱格式不正确</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">WEAK_PASSWORD</span></td>
+                            <td>400</td>
+                            <td>密码强度不足（至少8位）</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">INVALID_TOKEN</span></td>
+                            <td>400</td>
+                            <td>无效的验证令牌</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">TOKEN_EXPIRED</span></td>
+                            <td>400</td>
+                            <td>令牌已过期</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">UNAUTHORIZED</span></td>
+                            <td>401</td>
+                            <td>未登录或认证失败</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">USER_DELETED</span></td>
+                            <td>401</td>
+                            <td>用户已被删除</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">USER_NOT_FOUND</span></td>
+                            <td>401</td>
+                            <td>用户不存在或已被封禁</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">USER_SUSPENDED</span></td>
+                            <td>403</td>
+                            <td>用户已被封禁</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">FORBIDDEN</span></td>
+                            <td>403</td>
+                            <td>无权限访问</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">QUOTA_EXCEEDED</span></td>
+                            <td>403</td>
+                            <td>配额已用完</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">ADMIN_REQUIRED</span></td>
+                            <td>403</td>
+                            <td>需要管理员权限</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">NOT_FOUND</span></td>
+                            <td>404</td>
+                            <td>资源不存在</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">FILE_TOO_LARGE</span></td>
+                            <td>413</td>
+                            <td>文件过大（最大10MB）</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">UNSUPPORTED_FILE_TYPE</span></td>
+                            <td>415</td>
+                            <td>不支持的文件类型</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">INTERNAL_ERROR</span></td>
+                            <td>500</td>
+                            <td>服务器内部错误</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">DATABASE_ERROR</span></td>
+                            <td>500</td>
+                            <td>数据库错误</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">STORAGE_ERROR</span></td>
+                            <td>500</td>
+                            <td>存储服务错误</td>
+                        </tr>
+                        <tr>
+                            <td><span class="error-code">AI_SERVICE_ERROR</span></td>
+                            <td>500</td>
+                            <td>AI 服务错误</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 style="margin-top: 32px;">📤 标准错误响应格式</h3>
+                <div class="api-code" style="margin-top: 16px;">
+{
+    <span class="key">"success"</span>: <span class="boolean">false</span>,
+    <span class="key">"error"</span>: <span class="string">"ERROR_CODE"</span>,
+    <span class="key">"message"</span>: <span class="string">"用户友好的错误描述"</span>,
+    <span class="key">"details"</span>: { <span class="comment">// 可选</span>
+        <span class="key">"field"</span>: <span class="string">"具体错误字段"</span>
+    },
+    <span class="key">"timestamp"</span>: <span class="string">"2024-01-01T00:00:00Z"</span>
+}
+                </div>
+
+                <h3 style="margin-top: 32px;">✅ 标准成功响应格式</h3>
+                <div class="api-code" style="margin-top: 16px;">
+{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"data"</span>: { <span class="comment">// 具体数据</span>},
+    <span class="key">"message"</span>: <span class="string">"操作成功"</span>, <span class="comment">// 可选</span>
+    <span class="key">"timestamp"</span>: <span class="string">"2024-01-01T00:00:00Z"</span>
+}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+
+        function filterAPIs(type) {
+            const searchInput = document.getElementById(type + 'Search');
+            const filter = searchInput.value.toLowerCase();
+            const apiList = document.getElementById(type + 'List');
+            const cards = apiList.getElementsByClassName('api-card');
+
+            for (let i = 0; i < cards.length; i++) {
+                const keywords = cards[i].getAttribute('data-keywords');
+                const description = cards[i].querySelector('.api-description').textContent.toLowerCase();
+                const path = cards[i].querySelector('.api-path').textContent.toLowerCase();
+
+                if (keywords && (keywords.toLowerCase().indexOf(filter) > -1 ||
+                    description.indexOf(filter) > -1 ||
+                    path.indexOf(filter) > -1)) {
+                    cards[i].style.display = '';
+                } else {
+                    cards[i].style.display = 'none';
+                }
+            }
+        }
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('.api-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+
+                this.classList.toggle('expanded');
+            });
+        });
+    </script>
+</body>
+</html>

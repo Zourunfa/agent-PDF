@@ -1,16 +1,16 @@
 /**
- * Manual Text Input Component
- * Allows users to manually paste PDF text when auto-parsing fails
+ * Manual Text Input Component - Ant Design Modern
  */
 
 "use client";
 
-import React, { useState } from "react";
-import { Modal, Input, Button, message } from "antd";
+import React, { useState, useEffect } from "react";
+import { Modal, Input, Button, message, Space, Typography } from "antd";
 import { FileTextOutlined } from "@ant-design/icons";
 import { usePDF } from "@/contexts/PDFContext";
 
 const { TextArea } = Input;
+const { Text } = Typography;
 
 interface ManualTextInputProps {
   pdfId: string;
@@ -23,6 +23,12 @@ export function ManualTextInput({ pdfId, fileName, visible, onClose }: ManualTex
   const { updatePdfContent } = usePDF();
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setText("");
+    }
+  }, [visible]);
 
   const handleSubmit = async () => {
     if (!text.trim()) {
@@ -38,10 +44,8 @@ export function ManualTextInput({ pdfId, fileName, visible, onClose }: ManualTex
     setLoading(true);
 
     try {
-      // Update PDF content in context
       updatePdfContent(pdfId, text.trim(), 1);
 
-      // Send to backend to create vector store
       const response = await fetch("/api/manual-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,32 +75,38 @@ export function ManualTextInput({ pdfId, fileName, visible, onClose }: ManualTex
   return (
     <Modal
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FileTextOutlined style={{ color: '#6366F1' }} />
-          <span>手动输入文本内容</span>
-        </div>
+        <Space direction="vertical" size={0}>
+          <Space size={8}>
+            <FileTextOutlined style={{ color: '#6366F1' }} />
+            <span style={{ fontSize: 16, fontWeight: 600 }}>手动输入文本内容</span>
+          </Space>
+        </Space>
       }
       open={visible}
       onCancel={onClose}
       width={700}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          取消
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={handleSubmit}
-          style={{ background: '#6366F1' }}
-        >
-          保存并开始对话
-        </Button>,
-      ]}
+      footer={
+        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+          <Button onClick={onClose}>
+            取消
+          </Button>
+          <Button
+            type="primary"
+            loading={loading}
+            onClick={handleSubmit}
+            style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', border: 'none' }}
+          >
+            保存并开始对话
+          </Button>
+        </Space>
+      }
+      styles={{
+        body: { padding: 24 }
+      }}
     >
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>
-          文件名: <strong>{fileName}</strong>
+          文件名: <strong style={{ color: '#1E1B4B' }}>{fileName}</strong>
         </div>
         <div style={{ fontSize: 12, color: '#9CA3AF', lineHeight: 1.6 }}>
           由于 PDF 自动解析失败，请手动复制 PDF 中的文本内容并粘贴到下方。
@@ -112,7 +122,7 @@ export function ManualTextInput({ pdfId, fileName, visible, onClose }: ManualTex
         rows={12}
         maxLength={100000}
         showCount
-        style={{ fontSize: 13 }}
+        style={{ fontSize: 13, borderRadius: 8 }}
       />
 
       <div style={{ marginTop: 8, fontSize: 12, color: '#9CA3AF' }}>

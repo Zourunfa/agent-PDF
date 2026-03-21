@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户删除和邮件发送故障排查演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .tab:hover {
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            min-height: 500px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .problem-box {
+            background: #fee;
+            border-left: 4px solid #f44;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .solution-box {
+            background: #efe;
+            border-left: 4px solid #4a4;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .demo-area {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+
+        /* Animation styles */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            padding: 20px 30px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .flow-arrow {
+            font-size: 30px;
+            color: #667eea;
+        }
+
+        .flow-box.error {
+            border-color: #ef4444;
+            background: #fee;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .flow-box.success {
+            border-color: #10b981;
+            background: #efe;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+
+        .alert-banner {
+            position: relative;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .pulse-button {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .pulse-button:hover {
+            transform: scale(1.05);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            background: #e8e8e8;
+            transform: translateX(5px);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .before {
+            color: #ef4444;
+        }
+
+        .after {
+            color: #10b981;
+        }
+
+        .interactive-demo {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .demo-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .demo-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .status-indicator {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .status-error {
+            background: #fee;
+            color: #c00;
+        }
+
+        .status-success {
+            background: #efe;
+            color: #080;
+        }
+
+        .status-warning {
+            background: #ffc;
+            color: #860;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        h3 {
+            color: #666;
+            margin: 20px 0 10px;
+            font-size: 1.3em;
+        }
+
+        .timestamp {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 用户删除和邮件发送故障排查演示</h1>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('problem1')">问题1：删除用户</button>
+            <button class="tab" onclick="showTab('problem2')">问题2：Next.js缓存</button>
+            <button class="tab" onclick="showTab('problem3')">问题3：邮件IPv6</button>
+            <button class="tab" onclick="showTab('problem4')">问题4：失败提示</button>
+            <button class="tab" onclick="showTab('interactive')">交互演示</button>
+        </div>
+
+        <div class="content">
+            <!-- 问题1：删除用户 -->
+            <div id="problem1" class="tab-content active">
+                <h2>🗑️ 问题1：删除用户后数据库不一致</h2>
+
+                <div class="problem-box">
+                    <strong>❌ 问题现象：</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>后台删除用户后，<code>auth.users</code> 仍有数据</li>
+                        <li><code>user_profiles</code> 表为空</li>
+                        <li>登录接口返回"用户不存在"</li>
+                    </ul>
+                </div>
+
+                <div class="flow-diagram">
+                    <div class="flow-box">删除用户</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">删除 user_profiles</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">找不到 user.email</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">❌ auth.users 未删除</div>
+                </div>
+
+                <div class="solution-box">
+                    <strong>✅ 解决方案：</strong>
+                    <p style="margin-top: 10px;">修改删除顺序，先清理关联数据，再删除 auth.users</p>
+                </div>
+
+                <div class="flow-diagram">
+                    <div class="flow-box">删除用户</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box success">清理关联数据</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box success">删除 user_profiles</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box success">✅ 删除 auth.users</div>
+                </div>
+
+                <h3>关键代码修改</h3>
+                <div class="code-block">
+<pre style="color: #d4d4d4;">// ❌ 错误的删除顺序
+await supabase.from('user_profiles').delete().eq('id', userId);
+const targetUser = users.find(u => u.email === user.email); // user 已删除！
+
+// ✅ 正确的删除顺序
+// 1. 使用 RPC 清理所有关联数据
+await supabase.rpc('admin_delete_user_profile', {
+  target_user_id: userId
+});
+
+// 2. 删除 auth.users
+await supabase.auth.admin.deleteUser(userId);</pre>
+                </div>
+
+                <h3>完整删除顺序</h3>
+                <ul class="step-list">
+                    <li class="step-item">
+                        <div class="step-number">1</div>
+                        <div>清理 user_security_log（安全日志）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">2</div>
+                        <div>清理 quota_usage 和 quota_operations（配额）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">3</div>
+                        <div>清理 conversation_messages（对话消息）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">4</div>
+                        <div>清理 pdf_conversations 和 user_pdfs（PDF数据）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">5</div>
+                        <div>清理 user_sessions（会话）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">6</div>
+                        <div>清理 user_profiles（用户资料）</div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">7</div>
+                        <div>删除 auth.users（认证用户）</div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 问题2：Next.js缓存 -->
+            <div id="problem2" class="tab-content">
+                <h2>💾 问题2：Next.js 缓存导致用户列表为空</h2>
+
+                <div class="problem-box">
+                    <strong>❌ 问题现象：</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>注册成功，数据库有用户</li>
+                        <li>但后台 API 返回空数组</li>
+                        <li>直接脚本查询有用户</li>
+                    </ul>
+                </div>
+
+                <div class="flow-diagram">
+                    <div class="flow-box">注册用户</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box success">数据库有用户</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">Next.js API 返回空</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">❌ 列表为空</div>
+                </div>
+
+                <div class="solution-box">
+                    <strong>✅ 根本原因：</strong>
+                    <p style="margin-top: 10px;">Next.js 在构建时缓存了环境变量，运行时使用过期的 Service Role Key</p>
+                </div>
+
+                <h3>清理缓存步骤</h3>
+                <ul class="step-list">
+                    <li class="step-item">
+                        <div class="step-number">1</div>
+                        <div>停止开发服务器：<code>pkill -9 -f "next"</code></div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">2</div>
+                        <div>删除缓存：<code>rm -rf .next .turbo</code></div>
+                    </li>
+                    <li class="step-item">
+                        <div class="step-number">3</div>
+                        <div>重启服务器：<code>npm run dev</code></div>
+                    </li>
+                </ul>
+
+                <h3>快速清理命令</h3>
+                <div class="code-block">
+<pre style="color: #d4d4d4;"># 一键清理
+lsof -ti:3000 | xargs kill -9 && rm -rf .next && npm run dev
+
+# 或使用脚本
+./deep-clean.sh</pre>
+                </div>
+
+                <h3>验证缓存是否清理</h3>
+                <div class="demo-area">
+                    <p>运行以下命令验证：</p>
+                    <div class="code-block" style="margin-top: 10px;">
+<pre style="color: #d4d4d4;">curl http://localhost:3000/api/admin/debug-list-users \
+  -H "X-Admin-Token: YOUR_TOKEN" | jq '.data'</pre>
+                    </div>
+                </div>
+
+                <div class="alert-banner">
+                    ⚠️ 重要：每次修改 .env.local 后必须清理缓存！
+                </div>
+            </div>
+
+            <!-- 问题3：邮件IPv6 -->
+            <div id="problem3" class="tab-content">
+                <h2>📧 问题3：邮件发送 IPv6 错误</h2>
+
+                <div class="problem-box">
+                    <strong>❌ 错误信息：</strong>
+                    <div class="code-block" style="margin-top: 10px;">
+<pre style="color: #d4d4d4;">Error sending verification email:
+connect EHOSTUNREACH 2404:6800:4008:c1b::6c:587
+                      ^^^^^^^^^^^^^^^^^^^^^^^
+                      IPv6 地址</pre>
+                    </div>
+                </div>
+
+                <div class="flow-diagram">
+                    <div class="flow-box">Nodemailer</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">尝试 IPv6</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">网络不支持</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box error">❌ EHOSTUNREACH</div>
+                </div>
+
+                <div class="solution-box">
+                    <strong>✅ 解决方案：强制使用 IPv4</strong>
+                </div>
+
+                <div class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>项目</th>
+                            <th class="before">修改前</th>
+                            <th class="after">修改后</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>DNS 设置</td>
+                            <td class="before">默认</td>
+                            <td class="after"><code>dns.setDefaultResultOrder('ipv4first')</code></td>
+                        </tr>
+                        <tr>
+                            <td>Socket 配置</td>
+                            <td class="before">无</td>
+                            <td class="after"><code>family: 4</code></td>
+                        </tr>
+                        <tr>
+                            <td>端口</td>
+                            <td class="before">587 (TLS)</td>
+                            <td class="after">465 (SSL)</td>
+                        </tr>
+                        <tr>
+                            <td>超时</td>
+                            <td class="before">10秒</td>
+                            <td class="after">15秒</td>
+                        </tr>
+                    </tbody>
+                </div>
+
+                <h3>修改后的代码</h3>
+                <div class="code-block">
+<pre style="color: #d4d4d4;">import dns from 'dns';
+
+// 强制使用 IPv4
+dns.setDefaultResultOrder('ipv4first');
+
+transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,      // ✅ 改用 SSL 端口
+  secure: true,   // ✅ 使用 SSL
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false,
+    minVersion: 'TLSv1.2'
+  },
+  family: 4,  // ✅ 强制 IPv4
+  connectionTimeout: 15000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
+});</pre>
+                </div>
+
+                <h3>备选方案：使用国内邮件服务</h3>
+                <div class="demo-area">
+                    <p>如果 Gmail 仍然无法连接，建议使用国内邮件服务：</p>
+                    <table class="comparison-table" style="margin-top: 15px;">
+                        <thead>
+                            <tr>
+                                <th>服务商</th>
+                                <th>EMAIL_SERVICE</th>
+                                <th>推荐指数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>QQ 邮箱</td>
+                                <td><code>qq</code></td>
+                                <td>⭐⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>163 邮箱</td>
+                                <td><code>163</code></td>
+                                <td>⭐⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>126 邮箱</td>
+                                <td><code>126</code></td>
+                                <td>⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>Gmail</td>
+                                <td><code>gmail</code></td>
+                                <td>⭐⭐⭐</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 问题4：失败提示 -->
+            <div id="problem4" class="tab-content">
+                <h2>⚠️ 问题4：邮件发送失败提示不明显</h2>
+
+                <div class="problem-box">
+                    <strong>❌ 原始问题：</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>只有控制台日志</li>
+                        <li>前端页面没有明显提示</li>
+                        <li>用户不知道可以重试</li>
+                    </ul>
+                </div>
+
+                <div class="solution-box">
+                    <strong>✅ 改进方案</strong>
+                    <p style="margin-top: 10px;">添加多层视觉提示，确保用户注意到错误</p>
+                </div>
+
+                <h3>1. 顶部警告横幅</h3>
+                <div class="alert-banner">
+                    ⚠️ 邮件发送失败！请检查网络连接后点击下方按钮重新发送验证邮件
+                </div>
+
+                <h3>2. 优化的发送按钮</h3>
+                <div class="demo-area" style="text-align: center;">
+                    <button class="pulse-button">
+                        📧 发送验证邮件
+                    </button>
+                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                        ✅ 红色背景 + 54px 高度 + 脉冲动画
+                    </p>
+                </div>
+
+                <h3>3. 页面加载提示</h3>
+                <div class="demo-area">
+                    <div id="message-demo"></div>
+                </div>
+
+                <h3>4. 详细错误信息</h3>
+                <div class="demo-area">
+                    <div style="background: #FEE2E2; border: 1px solid #FECACA; border-radius: 12px; padding: 20px;">
+                        <p style="font-weight: 600; margin-bottom: 10px;">⚠️ 邮件发送失败</p>
+                        <ul style="margin-left: 20px;">
+                            <li>网络连接异常或SMTP配置错误</li>
+                            <li>请检查网络连接后重试</li>
+                            <li>或点击下方按钮重新发送</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>对比效果</h3>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>项目</th>
+                            <th class="before">改进前</th>
+                            <th class="after">改进后</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>警告横幅</td>
+                            <td class="before">❌ 无</td>
+                            <td class="after">✅ 顶部固定红色横幅</td>
+                        </tr>
+                        <tr>
+                            <td>按钮大小</td>
+                            <td class="before">46px 高度</td>
+                            <td class="after">54px 高度（失败时）</td>
+                        </tr>
+                        <tr>
+                            <td>按钮颜色</td>
+                            <td class="before">紫色渐变</td>
+                            <td class="after">红色渐变（失败时）</td>
+                        </tr>
+                        <tr>
+                            <td>动画效果</td>
+                            <td class="before">❌ 无</td>
+                            <td class="after">✅ 脉冲动画</td>
+                        </tr>
+                        <tr>
+                            <td>页面加载提示</td>
+                            <td class="before">❌ 无</td>
+                            <td class="after">✅ message.error 自动提示</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 交互演示 -->
+            <div id="interactive" class="tab-content">
+                <h2>🎮 交互式演示</h2>
+
+                <div class="demo-controls">
+                    <button class="demo-btn" onclick="demo1()">演示1：删除用户流程</button>
+                    <button class="demo-btn" onclick="demo2()">演示2：Next.js缓存问题</button>
+                    <button class="demo-btn" onclick="demo3()">演示3：邮件发送失败</button>
+                    <button class="demo-btn" onclick="demo4()">演示4：清理缓存</button>
+                </div>
+
+                <div id="demo-result" class="demo-area" style="min-height: 300px;">
+                    <p style="color: #999; text-align: center; padding: 50px;">
+                        点击上方按钮查看演示
+                    </p>
+                </div>
+
+                <div id="demo-status"></div>
+            </div>
+        </div>
+
+        <div class="timestamp">
+            创建时间：2026-03-21 | 版本：1.0
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            // 隐藏所有内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 移除所有激活状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // 显示选中的内容
+            document.getElementById(tabId).classList.add('active');
+
+            // 激活对应的标签
+            event.target.classList.add('active');
+        }
+
+        function demo1() {
+            const result = document.getElementById('demo-result');
+            const status = document.getElementById('demo-status');
+
+            result.innerHTML = `
+                <h3>演示1：删除用户流程</h3>
+                <div id="demo1-flow" style="margin: 20px 0;"></div>
+            `;
+
+            const flow = document.getElementById('demo1-flow');
+            let step = 0;
+            const steps = [
+                { text: '开始删除用户', class: '' },
+                { text: '删除 user_profiles', class: '' },
+                { text: '❌ 找不到 user.email', class: 'error' },
+                { text: '❌ auth.users 未删除', class: 'error' },
+            ];
+
+            const correctSteps = [
+                { text: '开始删除用户', class: '' },
+                { text: '清理关联数据 (RPC)', class: 'success' },
+                { text: '删除 user_profiles', class: 'success' },
+                { text: '✅ 删除 auth.users', class: 'success' },
+            ];
+
+            function showFlow() {
+                if (step < steps.length) {
+                    flow.innerHTML = `
+                        <div class="flow-diagram">
+                            ${steps.slice(0, step + 1).map(s =>
+                                `<div class="flow-box ${s.class}">${s.text}</div>`
+                            ).join('<div class="flow-arrow">→</div>')}
+                        </div>
+                    `;
+                    step++;
+                    setTimeout(showFlow, 1000);
+                } else {
+                    setTimeout(() => {
+                        flow.innerHTML = '<p style="text-align: center; color: #10b981; font-weight: 600; font-size: 18px;">✅ 正确的删除流程：</p>';
+                        let correctStep = 0;
+
+                        function showCorrectFlow() {
+                            if (correctStep < correctSteps.length) {
+                                flow.innerHTML = `
+                                    <div class="flow-diagram">
+                                        ${correctSteps.slice(0, correctStep + 1).map(s =>
+                                            `<div class="flow-box ${s.class}">${s.text}</div>`
+                                        ).join('<div class="flow-arrow">→</div>')}
+                                    </div>
+                                `;
+                                correctStep++;
+                                setTimeout(showCorrectFlow, 1000);
+                            }
+                        }
+                        showCorrectFlow();
+                    }, 1500);
+                }
+            }
+
+            showFlow();
+        }
+
+        function demo2() {
+            const result = document.getElementById('demo-result');
+
+            result.innerHTML = `
+                <h3>演示2：Next.js缓存问题</h3>
+                <div style="margin: 20px 0;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <p id="cache-status" style="text-align: center; font-weight: 600; margin-top: 10px;">
+                        准备演示...
+                    </p>
+                </div>
+            `;
+
+            const statuses = [
+                { progress: 20, text: '✅ 用户注册成功' },
+                { progress: 40, text: '✅ 数据库有用户' },
+                { progress: 60, text: '❌ Next.js API 返回空数组' },
+                { progress: 80, text: '🔧 清理缓存...' },
+                { progress: 100, text: '✅ API 正常返回用户' },
+            ];
+
+            let index = 0;
+            function showStatus() {
+                if (index < statuses.length) {
+                    const status = statuses[index];
+                    document.querySelector('.progress-fill').style.width = status.progress + '%';
+                    document.getElementById('cache-status').textContent = status.text;
+
+                    if (status.text.includes('❌')) {
+                        document.getElementById('cache-status').style.color = '#ef4444';
+                    } else if (status.text.includes('✅')) {
+                        document.getElementById('cache-status').style.color = '#10b981';
+                    } else if (status.text.includes('🔧')) {
+                        document.getElementById('cache-status').style.color = '#f59e0b';
+                    }
+
+                    index++;
+                    setTimeout(showStatus, 1200);
+                }
+            }
+
+            showStatus();
+        }
+
+        function demo3() {
+            const result = document.getElementById('demo-result');
+
+            result.innerHTML = `
+                <h3>演示3：邮件发送失败</h3>
+                <div style="text-align: center; padding: 30px;">
+                    <div id="email-status"></div>
+                    <div id="email-banner" style="margin-top: 20px;"></div>
+                    <div id="email-button" style="margin-top: 20px;"></div>
+                </div>
+            `;
+
+            const status = document.getElementById('email-status');
+            const banner = document.getElementById('email-banner');
+            const button = document.getElementById('email-button');
+
+            // 显示失败状态
+            status.innerHTML = `
+                <div class="status-indicator status-error">
+                    ❌ 邮件发送失败
+                </div>
+                <p style="margin-top: 10px; color: #ef4444; font-weight: 600;">
+                    connect EHOSTUNREACH 2404:6800:4008:c1b::6c
+                </p>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;">
+                    （尝试连接 IPv6 地址失败）
+                </p>
+            `;
+
+            setTimeout(() => {
+                // 显示警告横幅
+                banner.innerHTML = `
+                    <div class="alert-banner">
+                        ⚠️ 邮件发送失败！请检查网络连接后点击下方按钮重新发送验证邮件
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    // 显示优化的按钮
+                    button.innerHTML = `
+                        <button class="pulse-button" onclick="alert('模拟重发邮件...')">
+                            📧 发送验证邮件
+                        </button>
+                        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                            ✅ 红色背景 + 脉冲动画吸引注意
+                        </p>
+                    `;
+                }, 500);
+            }, 800);
+        }
+
+        function demo4() {
+            const result = document.getElementById('demo-result');
+            const status = document.getElementById('demo-status');
+
+            result.innerHTML = `
+                <h3>演示4：清理 Next.js 缓存</h3>
+                <div class="code-block" style="margin-top: 20px;">
+                    <pre id="cache-output" style="color: #d4d4d4;">等待开始...</pre>
+                </div>
+            `;
+
+            const output = document.getElementById('cache-output');
+            const commands = [
+                { text: '$ pkill -9 -f "next"', delay: 500 },
+                { text: '✓ 已停止 Next.js 进程', delay: 800 },
+                { text: '$ rm -rf .next .turbo', delay: 500 },
+                { text: '✓ 已删除缓存目录', delay: 800 },
+                { text: '$ npm run dev', delay: 500 },
+                { text: '✓ 开发服务器已启动', delay: 800 },
+                { text: '✅ 缓存清理完成！', delay: 500 },
+            ];
+
+            let index = 0;
+            function showCommand() {
+                if (index < commands.length) {
+                    const cmd = commands[index];
+                    output.textContent = cmd.text;
+                    index++;
+                    setTimeout(showCommand, cmd.delay);
+                }
+            }
+
+            showCommand();
+        }
+
+        // 页面加载完成后自动显示提示
+        window.onload = function() {
+            setTimeout(() => {
+                const messageDemo = document.getElementById('message-demo');
+                if (messageDemo) {
+                    messageDemo.innerHTML = `
+                        <div style="padding: 12px 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; display: inline-block; font-weight: 600;">
+                            💡 页面加载时自动提示
+                        </div>
+                    `;
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

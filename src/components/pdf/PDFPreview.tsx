@@ -1,25 +1,62 @@
 /**
- * PDF Preview Component - 使用 PDF.js 渲染 PDF 页面
+ * PDF Preview Component - Ant Design Modern
  */
 
-"use client";
+'use client';
 
-import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Loader2 } from "lucide-react";
-import { usePDF } from "@/contexts/PDFContext";
-import { ParseStatus } from "@/types/pdf";
-import * as pdfjsLib from "pdfjs-dist";
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Space, Tooltip, Spin, Empty, Tag } from 'antd';
+import { FileTextOutlined } from '@ant-design/icons';
+import { usePDF } from '@/contexts/PDFContext';
+import { ParseStatus } from '@/types/pdf';
+import * as pdfjsLib from 'pdfjs-dist';
 
-// 设置 PDF.js worker
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 }
+
+// Custom icons for Ant Design
+const ZoomInIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+    <path d="M11 8v6" />
+    <path d="M8 11h6" />
+  </svg>
+);
+
+const ZoomOutIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+    <path d="M8 11h6" />
+  </svg>
+);
+
+const RotateIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+  </svg>
+);
+
+const ChevronLeft = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+const ChevronRight = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
 
 interface PDFPreviewProps {
   className?: string;
 }
 
-export function PDFPreview({ className = "" }: PDFPreviewProps) {
+export function PDFPreview({ className = '' }: PDFPreviewProps) {
   const { activePdfId, pdfs } = usePDF();
   const activePdf = activePdfId ? pdfs.get(activePdfId) : null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,13 +69,9 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载 PDF 文档
   useEffect(() => {
-    if (!activePdf) {
-      return;
-    }
+    if (!activePdf) return;
 
-    // 允许在任何状态下预览PDF（PENDING, PARSING, COMPLETED）
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
@@ -46,10 +79,7 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
       try {
         let pdfData: string | ArrayBuffer;
 
-        // 优先使用缓存的 base64 数据（避免 Vercel Serverless /tmp 问题）
         if (activePdf.base64Data) {
-          console.log('[PDFPreview] Using cached base64 data');
-          // Convert base64 to Uint8Array
           const binaryString = atob(activePdf.base64Data);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
@@ -57,13 +87,9 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
           }
           pdfData = bytes;
         } else {
-          // Fallback: 从 API 加载（本地环境）
-          console.log('[PDFPreview] Loading PDF from API:', activePdf.id);
           const pdfUrl = `/api/pdf/${activePdf.id}`;
           pdfData = pdfUrl;
         }
-
-        console.log('[PDFPreview] PDF status:', activePdf.parseStatus);
 
         const loadingTask = pdfjsLib.getDocument({
           data: typeof pdfData === 'string' ? undefined : pdfData,
@@ -73,15 +99,12 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
         });
 
         const pdf = await loadingTask.promise;
-
-        console.log('[PDFPreview] PDF loaded successfully, pages:', pdf.numPages);
-
         setPdfDoc(pdf);
         setTotalPages(pdf.numPages);
         setCurrentPage(1);
       } catch (err) {
-        console.error("[PDFPreview] 加载PDF失败:", err);
-        setError("加载PDF失败: " + (err as Error).message);
+        console.error('[PDFPreview] 加载PDF失败:', err);
+        setError('加载PDF失败');
       } finally {
         setLoading(false);
       }
@@ -90,7 +113,6 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
     loadPDF();
   }, [activePdf]);
 
-  // 渲染当前页面
   useEffect(() => {
     if (!pdfDoc || !canvasRef.current) return;
 
@@ -100,11 +122,10 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
       try {
         const page = await pdfDoc.getPage(currentPage);
         const canvas = canvasRef.current;
-        const context = canvas.getContext("2d");
+        const context = canvas.getContext('2d');
 
         if (!context) return;
 
-        // 计算旋转后的尺寸
         const viewport = page.getViewport({ scale, rotation: rotation as any });
 
         canvas.height = viewport.height;
@@ -117,7 +138,7 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
 
         await page.render(renderContext).promise;
       } catch (err) {
-        console.error("渲染页面失败:", err);
+        console.error('渲染页面失败:', err);
       } finally {
         setLoading(false);
       }
@@ -126,74 +147,41 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
     renderPage();
   }, [pdfDoc, currentPage, scale, rotation]);
 
-  // 页面导航
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
   };
 
-  // 缩放控制
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
-
-  // 旋转控制
   const rotate = () => setRotation((prev) => (prev + 90) % 360);
 
-  // 没有选择PDF
   if (!activePdf) {
     return (
-      <div className={`flex items-center justify-center text-center min-h-[200px] ${className}`}>
-        <div className="fade-in-up">
-          <p className="text-xs text-indigo-400 font-medium">
-            {pdfs.size > 0 ? "选择文件查看" : "上传 PDF 开始"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // 如果没有 base64 数据且在 Vercel 环境，显示提示
-  const isVercel = typeof window !== 'undefined' && (
-    window.location.hostname.includes('vercel.app') ||
-    window.location.hostname.includes('vercel.com') ||
-    process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined
-  );
-
-  if (isVercel && !activePdf.base64Data) {
-    return (
       <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
-        <div className="text-center max-w-md px-4">
-          <div className="mb-3 text-4xl">📄</div>
-          <p className="text-sm font-semibold text-indigo-700 mb-2">
-            PDF 预览数据不可用
-          </p>
-          <p className="text-xs text-indigo-500 mb-3">
-            此 PDF 在旧版本上传，缺少预览数据。请重新上传以启用预览功能。
-          </p>
-          <p className="text-xs text-indigo-600 font-medium">
-            或切换到"文本内容"标签页查看 PDF 内容
-          </p>
-        </div>
+        <Empty
+          image={<FileTextOutlined style={{ fontSize: 48, color: '#D1D5DB' }} />}
+          description="选择文件查看"
+        />
       </div>
     );
   }
 
-  // 加载失败
   if (error) {
     return (
       <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
         <div className="text-center">
           <p className="text-xs text-red-500 font-medium">{error}</p>
-          <button
+          <Button
             onClick={() => {
               setError(null);
               setPdfDoc(null);
             }}
-            className="mt-2 px-3 py-1 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+            style={{ marginTop: 8 }}
           >
             重试
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -201,82 +189,78 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
-      {/* 工具栏 */}
-      <div className="flex items-center justify-between px-3 py-2 bg-white/50 backdrop-blur-sm rounded-t-xl border border-indigo-100/50">
-        {/* 页面导航 */}
-        <div className="flex items-center gap-2">
-          <button
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-white/50 backdrop-blur-sm rounded-t-xl border border-black/5">
+        {/* Page Navigation */}
+        <Space size={4}>
+          <Button
+            size="small"
+            icon={<ChevronLeft />}
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="p-1.5 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            <ChevronLeft className="h-4 w-4 text-indigo-600" />
-          </button>
-
-          <span className="text-xs font-semibold text-indigo-700 min-w-[60px] text-center">
+            style={{ borderRadius: 6 }}
+          />
+          <span style={{ fontSize: 12, fontWeight: 600, minWidth: 50, textAlign: 'center' }}>
             {currentPage} / {totalPages}
           </span>
-
-          <button
+          <Button
+            size="small"
+            icon={<ChevronRight />}
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
-            className="p-1.5 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            <ChevronRight className="h-4 w-4 text-indigo-600" />
-          </button>
-        </div>
+            style={{ borderRadius: 6 }}
+          />
+        </Space>
 
-        {/* 缩放控制 */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={zoomOut}
-            disabled={scale <= 0.5}
-            className="p-1.5 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            <ZoomOut className="h-3.5 w-3.5 text-indigo-600" />
-          </button>
-
-          <span className="text-xs font-semibold text-indigo-700 min-w-[40px] text-center">
+        {/* Zoom Control */}
+        <Space size={4}>
+          <Tooltip title="缩小">
+            <Button
+              size="small"
+              icon={<ZoomOutIcon />}
+              onClick={zoomOut}
+              disabled={scale <= 0.5}
+              style={{ borderRadius: 6 }}
+            />
+          </Tooltip>
+          <span style={{ fontSize: 12, fontWeight: 600, minWidth: 40, textAlign: 'center' }}>
             {Math.round(scale * 100)}%
           </span>
+          <Tooltip title="放大">
+            <Button
+              size="small"
+              icon={<ZoomInIcon />}
+              onClick={zoomIn}
+              disabled={scale >= 3}
+              style={{ borderRadius: 6 }}
+            />
+          </Tooltip>
+        </Space>
 
-          <button
-            onClick={zoomIn}
-            disabled={scale >= 3}
-            className="p-1.5 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          >
-            <ZoomIn className="h-3.5 w-3.5 text-indigo-600" />
-          </button>
-        </div>
-
-        {/* 旋转控制 */}
-        <button
-          onClick={rotate}
-          className="p-1.5 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 transition-all"
-        >
-          <RotateCw className="h-3.5 w-3.5 text-indigo-600" />
-        </button>
+        {/* Rotate Control */}
+        <Tooltip title="旋转">
+          <Button size="small" icon={<RotateIcon />} onClick={rotate} style={{ borderRadius: 6 }} />
+        </Tooltip>
       </div>
 
-      {/* PDF 渲染区域 */}
-      <div className="flex-1 overflow-auto bg-indigo-50/50 rounded-b-xl border border-t-0 border-indigo-100/50 flex items-center justify-center p-4">
+      {/* PDF Render Area */}
+      <div className="flex-1 overflow-auto bg-black/5 rounded-b-xl border border-t-0 border-black/5 flex items-center justify-center p-4">
         {loading && !pdfDoc ? (
           <div className="text-center">
-            <Loader2 className="h-8 w-8 text-indigo-400 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-indigo-500">加载中...</p>
+            <Spin size="large" />
+            <p className="text-xs text-gray-500 mt-2">加载中...</p>
           </div>
         ) : (
           <div className="relative">
-            {/* 解析状态指示器 */}
             {activePdf.parseStatus === ParseStatus.PARSING && (
-              <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-amber-500 text-white text-[10px] font-semibold rounded-full shadow-lg animate-pulse">
+              <Tag color="warning" style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
                 解析中...
-              </div>
+              </Tag>
             )}
             {activePdf.parseStatus === ParseStatus.PENDING && (
-              <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded-full shadow-lg">
+              <Tag color="blue" style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
                 等待解析
-              </div>
+              </Tag>
             )}
             <div className="relative shadow-lg rounded-lg overflow-hidden bg-white">
               <canvas ref={canvasRef} className="max-w-full h-auto" />
@@ -285,12 +269,10 @@ export function PDFPreview({ className = "" }: PDFPreviewProps) {
         )}
       </div>
 
-      {/* 文件信息 */}
-      <div className="mt-3 px-3 py-2 bg-white/50 backdrop-blur-sm rounded-lg border border-indigo-100/50">
-        <p className="text-[10px] font-semibold text-indigo-700 truncate">
-          {activePdf.fileName}
-        </p>
-        <p className="text-[9px] text-indigo-500/80 mt-0.5">
+      {/* File Info */}
+      <div className="mt-3 px-3 py-2 bg-white/50 backdrop-blur-sm rounded-lg border border-black/5">
+        <p className="text-[10px] font-semibold truncate">{activePdf.fileName}</p>
+        <p className="text-[9px] text-gray-500 mt-0.5">
           {activePdf.pageCount} 页 · {(activePdf.fileSize / 1024 / 1024).toFixed(2)} MB
         </p>
       </div>
