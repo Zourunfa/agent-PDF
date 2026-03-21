@@ -19,14 +19,24 @@ export async function GET(request: NextRequest) {
 
     if (userError || !user) {
       console.error('Auth error:', userError);
-      return NextResponse.json(
+
+      // 如果是用户不存在错误（被删除），清除无效的 token
+      const response = NextResponse.json(
         {
           success: false,
-          error: 'UNAUTHORIZED',
-          message: '未登录',
+          error: userError?.code === 'user_not_found' ? 'USER_DELETED' : 'UNAUTHORIZED',
+          message: userError?.code === 'user_not_found'
+            ? '用户已被删除，请重新登录'
+            : '未登录',
         },
         { status: 401 }
       );
+
+      // 清除无效的 session cookie
+      response.cookies.delete('sb-access-token');
+      response.cookies.delete('sb-refresh-token');
+
+      return response;
     }
 
     // 获取用户 profile
@@ -70,8 +80,13 @@ export async function GET(request: NextRequest) {
         name: profile?.name || user.user_metadata?.name,
         role: profile?.role || 'user',
         avatar: profile?.avatar_url,
-        emailVerified: user.email_confirmed_at != null,
+        emailVerified: profile?.email_verified || false,
+        email_verified: profile?.email_verified || false, // 添加备用字段
         createdAt: user.created_at,
+        // profile 表的其他字段
+        avatar_url: profile?.avatar_url,
+        status: profile?.status,
+        created_at: profile?.created_at,
       },
     });
   } catch (error) {

@@ -1,8 +1,44 @@
-// 邮件服务 - 使用 Resend
-import { Resend } from 'resend';
+// 邮件服务 - 使用 Nodemailer + Gmail
+import nodemailer from 'nodemailer';
+import dns from 'dns';
 
-// 初始化 Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// 强制禁用 IPv6，只使用 IPv4
+process.env.NODE_OPTIONS = '--dns-result-order=ipv4first';
+dns.setDefaultResultOrder('ipv4first');
+
+// 初始化 Nodemailer Transporter
+let transporter: nodemailer.Transporter | null = null;
+
+if (process.env.EMAIL_SERVICE && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+  transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    // 尝试多个端口：465 (SSL) 或 587 (TLS)
+    port: 465,
+    secure: true, // 使用 SSL
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+    tls: {
+      rejectUnauthorized: false,
+      // 使用最小 TLS 版本
+      minVersion: 'TLSv1.2'
+    },
+    // 连接超时设置（增加超时时间）
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+    // 强制使用 IPv4
+    family: 4,
+    // 重试配置
+    pool: false,
+    maxConnections: 1,
+    rateDelta: 1000,
+    rateLimit: 5,
+  });
+
+  console.log('[Email] 邮件服务已配置（Gmail SMTP + 端口 465 + 强制 IPv4）');
+}
 
 // 应用 URL
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -155,7 +191,7 @@ function getVerificationEmailTemplate(vars: EmailTemplateVars): string {
       <p>&copy; ${new Date().getFullYear()} PDF AI Chat. 保留所有权利。</p>
       <p>
         如果您有任何问题，请联系我们的
-        <a href="mailto:support@example.com">客服团队</a>
+        <a href="mailto:${process.env.EMAIL_USER}">客服团队</a>
       </p>
     </div>
   </div>
@@ -288,7 +324,7 @@ function getPasswordResetEmailTemplate(vars: EmailTemplateVars): string {
       <p>&copy; ${new Date().getFullYear()} PDF AI Chat. 保留所有权利。</p>
       <p>
         如果您有任何问题，请联系我们的
-        <a href="mailto:support@example.com">客服团队</a>
+        <a href="mailto:${process.env.EMAIL_USER}">客服团队</a>
       </p>
     </div>
   </div>
@@ -309,8 +345,8 @@ export async function sendVerificationEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.warn('⚠️ Resend service not configured');
+  if (!transporter) {
+    console.warn('⚠️ Email service not configured');
     if (isDevelopment) {
       console.log('[Dev Mode] 跳过邮件验证，自动验证用户');
       return { success: true, developmentMode: true, messageId: 'dev-mode-skip' };
@@ -322,19 +358,15 @@ export async function sendVerificationEmail(
     const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
     const html = getVerificationEmailTemplate({ email, name, verifyUrl });
 
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
+    const info = await transporter.sendMail({
+      from: `"PDF AI Chat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: '验证您的邮箱地址 - PDF AI Chat',
       html,
     });
 
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    console.log('✓ Verification email sent successfully:', response.data?.id);
-    return { success: true, messageId: response.data?.id };
+    console.log('✓ Verification email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error: any) {
     console.error('✗ Error sending verification email:', error.message);
 
@@ -359,8 +391,8 @@ export async function sendPasswordResetEmail(
   token: string,
   name?: string
 ): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend service not configured');
+  if (!transporter) {
+    console.error('Email service not configured');
     return { success: false, error: 'Email service not configured' };
   }
 
@@ -368,21 +400,17 @@ export async function sendPasswordResetEmail(
     const resetUrl = `${APP_URL}/reset-password?token=${token}`;
     const html = getPasswordResetEmailTemplate({ email, name, resetUrl });
 
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
+    const info = await transporter.sendMail({
+      from: `"PDF AI Chat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: '重置您的密码 - PDF AI Chat',
       html,
     });
 
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    console.log('Password reset email sent successfully:', response.data?.id);
-    return { success: true, messageId: response.data?.id };
+    console.log('✓ Password reset email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error('✗ Error sending password reset email:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -394,16 +422,16 @@ export async function sendPasswordResetEmail(
  * 发送欢迎邮件（可选功能）
  */
 export async function sendWelcomeEmail(email: string, name?: string): Promise<SendEmailResult> {
-  if (!resend) {
-    console.error('Resend service not configured');
+  if (!transporter) {
+    console.error('Email service not configured');
     return { success: false, error: 'Email service not configured' };
   }
 
   try {
     const displayName = name || email.split('@')[0];
 
-    const response = await resend.emails.send({
-      from: 'noreply@resend.dev',
+    const info = await transporter.sendMail({
+      from: `"PDF AI Chat" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: '欢迎加入 PDF AI Chat！',
       html: `
@@ -427,13 +455,10 @@ export async function sendWelcomeEmail(email: string, name?: string): Promise<Se
       `,
     });
 
-    if (response.error) {
-      throw new Error(response.error.message);
-    }
-
-    return { success: true, messageId: response.data?.id };
+    console.log('✓ Welcome email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending welcome email:', error);
+    console.error('✗ Error sending welcome email:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -445,5 +470,5 @@ export async function sendWelcomeEmail(email: string, name?: string): Promise<Se
  * 检查邮件服务是否可用
  */
 export function isEmailServiceAvailable(): boolean {
-  return !!resend;
+  return !!transporter;
 }

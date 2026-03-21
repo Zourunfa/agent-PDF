@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendVerificationEmail } from '@/lib/email-mailersend';
+import { sendVerificationEmail } from '@/lib/email';
 import { randomUUID } from 'crypto';
 
 // 强制动态渲染，因为使用了 cookies()
@@ -16,15 +16,15 @@ export const dynamic = 'force-dynamic';
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-function checkRateLimit(userId: string): boolean {
+function checkRateLimit(identifier: string): boolean {
   const now = Date.now();
   const windowMs = 60 * 60 * 1000; // 1小时窗口
   const maxRequests = 5; // 最多5次请求
 
-  const record = rateLimitMap.get(userId);
+  const record = rateLimitMap.get(identifier);
 
   if (!record || now > record.resetTime) {
-    rateLimitMap.set(userId, {
+    rateLimitMap.set(identifier, {
       count: 1,
       resetTime: now + windowMs,
     });
@@ -41,6 +41,12 @@ function checkRateLimit(userId: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // 获取请求参数
+    const body = await request.json().catch(() => ({}));
+    const { email } = body;
+
+    console.log('[Resend Verification] 收到请求:', { email, userExists: !!email });
+
     // 检查用户是否已登录
     const supabase = createClient();
     const {
@@ -48,34 +54,59 @@ export async function POST(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'UNAUTHORIZED',
-          message: '请先登录',
-        },
-        { status: 401 }
-      );
+    console.log('[Resend Verification] 用户登录状态:', { user: !!user, authError });
+
+    let profile: any = null;
+
+    // 如果已登录，使用登录用户的信息
+    if (user && !authError) {
+      console.log('[Resend Verification] 用户已登录，尝试获取 profile');
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, email, name, email_verified')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[Resend Verification] Profile 查询结果:', { userProfile, profileError });
+
+      if (userProfile && !profileError) {
+        profile = userProfile;
+        console.log('[Resend Verification] ✓ 使用登录用户的 profile');
+      }
     }
 
-    // 获取用户完整信息
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('id, email, name, email_verified')
-      .eq('id', user.id)
-      .single();
+    // 如果未登录或获取失败，尝试使用邮箱
+    if (!profile && email) {
+      console.log('[Resend Verification] 尝试使用邮箱查找用户:', email);
+      const adminClient = createAdminClient();
+      const { data: emailProfile, error: emailProfileError } = await adminClient
+        .from('user_profiles')
+        .select('id, email, name, email_verified')
+        .eq('email', email)
+        .single();
 
-    if (profileError || !profile) {
+      console.log('[Resend Verification] 邮箱查询结果:', { emailProfile, emailProfileError });
+
+      if (emailProfile && !emailProfileError) {
+        profile = emailProfile;
+        console.log('[Resend Verification] ✓ 使用邮箱找到的 profile');
+      }
+    }
+
+    // 如果仍然没有找到用户
+    if (!profile) {
+      console.error('[Resend Verification] ❌ 用户未找到');
       return NextResponse.json(
         {
           success: false,
           error: 'USER_NOT_FOUND',
-          message: '用户信息不存在',
+          message: user ? '用户信息不存在' : '请先登录或提供邮箱地址',
         },
         { status: 404 }
       );
     }
+
+    console.log('[Resend Verification] ✓ 用户信息:', profile.email);
 
     // 检查邮箱是否已验证
     if (profile.email_verified) {
@@ -89,8 +120,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查限流
-    if (!checkRateLimit(profile.id)) {
+    // 检查限流（使用邮箱作为限流标识符）
+    if (!checkRateLimit(profile.email)) {
       return NextResponse.json(
         {
           success: false,

@@ -35,12 +35,18 @@ export default function RegisterPage() {
         throw new Error(data.message || '注册失败');
       }
 
-      // 注册成功，跳转到验证页面
-      message.success('注册成功！');
+      // 注册成功，根据邮件发送状态显示不同提示
+      if (data.emailSent) {
+        message.success('注册成功！请检查您的邮箱并点击验证链接');
+      } else if (data.developmentMode) {
+        message.warning('注册成功！开发模式：邮件已跳过，但仍需验证邮箱');
+      } else {
+        message.warning('注册成功！邮件发送失败，请稍后在用户中心重新发送验证邮件');
+      }
 
       // 短暂延迟后跳转
       setTimeout(() => {
-        router.push(`/register/success?email=${encodeURIComponent(values.email)}`);
+        router.push(`/register/success?email=${encodeURIComponent(values.email)}&emailSent=${data.emailSent}&devMode=${data.developmentMode || false}`);
       }, 500);
     } catch (err: any) {
       message.error(err.message || '注册失败，请稍后重试');

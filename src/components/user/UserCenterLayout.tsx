@@ -168,13 +168,55 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
   );
 
   return (
-    <Layout
-      style={{
-        minHeight: 'calc(100vh - 64px)',
-        background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-      }}
-    >
-      <Content style={{ padding: isMobile ? '16px' : '24px' }}>
+    <>
+      {/* 自定义滚动条样式 */}
+      <style jsx global>{`
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+          width: 8px;
+        height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: rgba(99, 102, 241, 0.3);
+          border-radius: 4px;
+          transition: background 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(99, 102, 241, 0.5);
+        }
+
+        /* 平滑滚动 */
+        * {
+          scroll-behavior: smooth;
+        }
+
+        /* 确保页面可以滚动 */
+        body, html {
+          overflow-x: hidden;
+        }
+      `}</style>
+
+      <Layout
+        style={{
+          minHeight: 'calc(100vh - 64px)',
+          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+        }}
+      >
+      <Content
+        style={{
+          padding: isMobile ? '16px' : '24px',
+          overflowY: 'auto',  // ✅ 允许 Content 垂直滚动
+          overflowX: 'hidden', // 隐藏水平滚动条
+          maxHeight: 'calc(100vh - 64px)', // 限制最大高度
+        }}
+      >
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           {/* 移动端菜单按钮 */}
           {isMobile && (
@@ -217,6 +259,8 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
                   border: '1px solid rgba(255, 255, 255, 0.8)',
                   boxShadow: '0 8px 32px rgba(99, 102, 241, 0.08)',
                   height: 'fit-content',
+                  position: 'sticky',  // 固定侧边栏
+                  top: 24,  // 距离顶部
                 }}
               >
                 {mobileMenuContent}
@@ -224,7 +268,12 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
             )}
 
             {/* 右侧内容区域 */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
               <div
                 style={{
                   background: 'rgba(255, 255, 255, 0.95)',
@@ -233,7 +282,7 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
                   border: '1px solid rgba(255, 255, 255, 0.8)',
                   boxShadow: '0 8px 32px rgba(99, 102, 241, 0.08)',
                   minHeight: isMobile ? 400 : 600,
-                  overflow: 'hidden',
+                  // ✅ 移除内部容器的滚动限制，让外层 Content 处理滚动
                 }}
               >
                 {children}
@@ -262,5 +311,6 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
         {mobileMenuContent}
       </Drawer>
     </Layout>
+    </>
   );
 }
