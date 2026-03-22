@@ -166,8 +166,26 @@ export async function POST(req: NextRequest) {
       blobUrl = await uploadPDFToBlob(pdfId, buffer, file.name);
       console.log('✅ PDF 已上传到 Blob Storage:', blobUrl);
     } catch (blobError) {
-      console.warn('⚠️ Blob Storage 上传失败，将使用临时文件:', blobError);
-      // 继续执行，使用临时文件作为后备
+      console.warn('⚠️ Blob Storage 上传失败，将使用临时文件');
+      console.error('Blob Error Details:', {
+        message: (blobError as Error).message,
+        name: (blobError as Error).name,
+        hasToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+        hasVercelUrl: !!process.env.VERCEL_URL,
+        vercelEnv: process.env.VERCEL_ENV,
+      });
+
+      // Check if it's a configuration issue
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        console.error('❌ BLOB_READ_WRITE_TOKEN 未设置！');
+        console.error('请在 .env.local 中设置 BLOB_READ_WRITE_TOKEN');
+      }
+      if (!process.env.VERCEL_URL) {
+        console.error('❌ VERCEL_URL 未设置！');
+        console.error('请在 .env.local 中设置 VERCEL_URL=http://localhost:3000');
+      }
+
+      // Continue execution, using temp file as fallback
     }
 
     console.log('✅ 文件已保存到:', tempPath);
