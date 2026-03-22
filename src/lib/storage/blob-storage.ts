@@ -6,21 +6,55 @@
 import { put, head, del } from '@vercel/blob';
 
 /**
+ * Check Blob Storage configuration
+ */
+function checkBlobConfig(): { configured: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    issues.push('BLOB_READ_WRITE_TOKEN 未设置');
+  }
+
+  if (!process.env.VERCEL_URL) {
+    issues.push('VERCEL_URL 未设置（本地开发应为 http://localhost:3000）');
+  }
+
+  return {
+    configured: issues.length === 0,
+    issues,
+  };
+}
+
+/**
  * Upload PDF to Vercel Blob Storage
  */
 export async function uploadPDFToBlob(pdfId: string, buffer: Buffer, fileName: string): Promise<string> {
+  // Check configuration
+  const config = checkBlobConfig();
+  if (!config.configured) {
+    throw new Error(`Blob Storage 配置不完整: ${config.issues.join(', ')}`);
+  }
+
   try {
     console.log(`[Blob Storage] Uploading PDF ${pdfId} to Vercel Blob...`);
-    
+    console.log(`[Blob Storage] Environment: ${process.env.VERCEL_ENV || 'unknown'}`);
+    console.log(`[Blob Storage] Vercel URL: ${process.env.VERCEL_URL}`);
+    console.log(`[Blob Storage] Token prefix: ${process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 20)}...`);
+
     const blob = await put(`pdfs/${pdfId}.pdf`, buffer, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
     });
-    
+
     console.log(`[Blob Storage] ✓ Uploaded to: ${blob.url}`);
     return blob.url;
   } catch (error) {
     console.error(`[Blob Storage] ✗ Upload failed:`, error);
+    console.error(`[Blob Storage] Error details:`, {
+      message: (error as Error).message,
+      name: (error as Error).name,
+      stack: (error as Error).stack,
+    });
     throw error;
   }
 }
