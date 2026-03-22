@@ -199,23 +199,43 @@ async function parsePDFAsyncInternal(pdfId: string): Promise<{
         const storagePath = (pdfRecord as any).storage_path;
         console.log(`[Parse API] ✓ Found PDF in database, storage path: ${storagePath}`);
 
-        // Try to read from the storage path
-        try {
-          await fs.access(storagePath);
-          console.log(`[Parse API] ✓ PDF file exists at storage path`);
-          // Copy to temp directory for processing
-          const buffer = await fs.readFile(storagePath);
-          await fs.mkdir(tempDir, { recursive: true });
-          await fs.writeFile(filePath, buffer);
-          console.log(`[Parse API] ✓ Copied PDF to temp directory`);
-          fileExists = true;
-        } catch (storageError) {
-          console.error(`[Parse API] ✗ Cannot read from storage path:`, storageError);
-          return {
-            parseStatus: ParseStatus.FAILED,
-            textContent: '',
-            pageCount: 0,
-          };
+        // Check if storage path is a Blob URL
+        if (storagePath && storagePath.startsWith('http')) {
+          console.log(`[Parse API] Storage path is Blob URL, downloading...`);
+          try {
+            const { downloadPDFFromBlob } = await import('@/lib/storage/blob-storage');
+            const buffer = await downloadPDFFromBlob(storagePath);
+            await fs.mkdir(tempDir, { recursive: true });
+            await fs.writeFile(filePath, buffer);
+            console.log(`[Parse API] ✓ Downloaded and saved to temp`);
+            fileExists = true;
+          } catch (blobError) {
+            console.error(`[Parse API] ✗ Failed to download from Blob:`, blobError);
+            return {
+              parseStatus: ParseStatus.FAILED,
+              textContent: '',
+              pageCount: 0,
+            };
+          }
+        } else {
+          // Try to read from the storage path (local file)
+          try {
+            await fs.access(storagePath);
+            console.log(`[Parse API] ✓ PDF file exists at storage path`);
+            // Copy to temp directory for processing
+            const buffer = await fs.readFile(storagePath);
+            await fs.mkdir(tempDir, { recursive: true });
+            await fs.writeFile(filePath, buffer);
+            console.log(`[Parse API] ✓ Copied PDF to temp directory`);
+            fileExists = true;
+          } catch (storageError) {
+            console.error(`[Parse API] ✗ Cannot read from storage path:`, storageError);
+            return {
+              parseStatus: ParseStatus.FAILED,
+              textContent: '',
+              pageCount: 0,
+            };
+          }
         }
       } catch (dbError) {
         console.error(`[Parse API] ✗ Failed to retrieve PDF from database:`, dbError);
