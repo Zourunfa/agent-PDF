@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
         if (!hasVectorStore) {
           console.log(`[Chat API] ⚠️ Vector store not found, attempting to recreate...`);
           try {
-            const { getPDFFile } = await import('@/lib/storage/pdf-files');
+            const { getPDFFile, addPDFFile } = await import('@/lib/storage/pdf-files');
             const { splitTextWithMetadata } = await import('@/lib/pdf/text-splitter');
             const { createVectorStoreFromChunks } = await import('@/lib/langchain/vector-store');
 
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
               textToUse = pdfTextContent;
               pageCountToUse = pdfPageCount || 0;
             } else {
-              // Fallback: Try to load from server storage (works in local dev)
+              // Fallback 1: Try to load from server storage (works in local dev)
               console.log(`[Chat API] Checking PDF file storage...`);
               const pdfFile = await getPDFFile(pdfId);
               console.log(`[Chat API] PDF file found: ${!!pdfFile}`);
@@ -172,6 +172,45 @@ export async function POST(req: NextRequest) {
                 );
                 textToUse = pdfFile.textContent;
                 pageCountToUse = pdfFile.pageCount || 0;
+              }
+
+              // Fallback 2: Try to load from database (for serverless production)
+              if (!textToUse && userId) {
+                console.log(`[Chat API] Text not in storage, trying database...`);
+                try {
+                  const { createClient } = await import('@/lib/supabase/server');
+                  const supabase = createClient();
+
+                  const { data: pdfRecord, error } = await supabase
+                    .from('user_pdfs')
+                    .select('text_content, page_count, parse_status')
+                    .eq('id', pdfId)
+                    .eq('user_id', userId)
+                    .maybeSingle();
+
+                  if (error) {
+                    console.error(`[Chat API] Database query error:`, error);
+                  } else if (pdfRecord?.text_content) {
+                    console.log(
+                      `[Chat API] ✓ Found PDF text in database (${pdfRecord.text_content.length} chars)`
+                    );
+                    textToUse = pdfRecord.text_content;
+                    pageCountToUse = pdfRecord.page_count || 0;
+
+                    // Update in-memory storage for next time
+                    if (pdfFile) {
+                      pdfFile.textContent = pdfRecord.text_content;
+                      pdfFile.pageCount = pdfRecord.page_count;
+                      pdfFile.parseStatus = pdfRecord.parse_status;
+                      await addPDFFile(pdfFile);
+                      console.log(`[Chat API] ✓ Updated in-memory storage from database`);
+                    }
+                  } else {
+                    console.log(`[Chat API] No text content found in database`);
+                  }
+                } catch (dbError) {
+                  console.error(`[Chat API] Database fetch error:`, dbError);
+                }
               }
             }
 
