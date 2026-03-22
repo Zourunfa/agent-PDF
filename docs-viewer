@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Docs Viewer - 快捷命令
+# 用于快速查找和打开项目技术文档
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_SCRIPT="$SCRIPT_DIR/.claude/skills/docs-viewer.js"
+
+# 检查技能脚本是否存在
+if [ ! -f "$SKILL_SCRIPT" ]; then
+    echo "❌ 找不到 docs-viewer.js 脚本"
+    exit 1
+fi
+
+# 执行对应的命令
+node "$SKILL_SCRIPT" "$@"

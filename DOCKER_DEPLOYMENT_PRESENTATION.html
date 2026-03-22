@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Self-Hosted 部署方案 - PDF Chat Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .presentation-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 60px;
+            min-height: 600px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 36px;
+            color: #764ba2;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 24px;
+            color: #555;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .feature-desc {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .architecture-diagram {
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .arch-box {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.3s;
+        }
+
+        .arch-box:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .arch-arrow {
+            text-align: center;
+            font-size: 30px;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .checkmark {
+            color: #10b981;
+            font-size: 24px;
+        }
+
+        .crossmark {
+            color: #ef4444;
+            font-size: 24px;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            display: flex;
+            align-items: center;
+        }
+
+        .step-number {
+            background: #10b981;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .comment {
+            color: #6a9955;
+        }
+
+        .command {
+            color: #4ec9b0;
+        }
+
+        .string {
+            color: #ce9178;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 60px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .nav-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .nav-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e0e0e0;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        .slide-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #fdcb6e;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .tech-item {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <!-- Slide Counter -->
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">10</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>🚀 Docker Self-Hosted 部署方案</h1>
+            <p class="subtitle">PDF Chat Application - 从云端到自托管的完整迁移指南</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-title">数据完全控制</div>
+                    <div class="feature-desc">所有 PDF 文件和对话数据存储在您自己的服务器上，完全掌控数据安全</div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <div class="feature-title">成本可控</div>
+                    <div class="feature-desc">无平台使用费，只需支付服务器成本，长期使用更经济</div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">高性能架构</div>
+                    <div class="feature-desc">负载均衡 + 多实例部署，支持更高并发和更快的响应速度</div>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <strong>🎯 适用场景：</strong>企业内部部署、隐私敏感应用、成本优化、离线环境
+            </div>
+        </div>
+
+        <!-- Slide 2: Architecture Overview -->
+        <div class="slide">
+            <h2>🏗️ 系统架构</h2>
+
+            <div class="architecture-diagram">
+                <div class="arch-box">🌐 Nginx (负载均衡 + 反向代理)</div>
+                <div class="arch-arrow">↓ ↓</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div class="arch-box">🚀 App Instance 1 (Next.js)</div>
+                        <div class="arch-arrow">↓</div>
+                        <div class="arch-box">🗄️ PostgreSQL (主数据库)</div>
+                    </div>
+                    <div>
+                        <div class="arch-box">🚀 App Instance 2 (Next.js)</div>
+                        <div class="arch-arrow">↓</div>
+                        <div class="arch-box">🔴 Redis (缓存 + 会话)</div>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-box">🧠 Qdrant (向量数据库)</div>
+                <div class="arch-arrow">↓</div>
+                <div class="arch-box">📁 Local File Storage (PDF 文件)</div>
+            </div>
+
+            <div class="tech-stack">
+                <div class="tech-item">Docker</div>
+                <div class="tech-item">Docker Compose</div>
+                <div class="tech-item">Next.js 14</div>
+                <div class="tech-item">PostgreSQL 15</div>
+                <div class="tech-item">Redis 7</div>
+                <div class="tech-item">Qdrant</div>
+                <div class="tech-item">Nginx</div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Comparison -->
+        <div class="slide">
+            <h2>📊 Vercel vs Docker 自托管对比</h2>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>特性</th>
+                        <th>Vercel 部署</th>
+                        <th>Docker 自托管</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>部署复杂度</strong></td>
+                        <td><span class="checkmark">✓</span> 非常简单</td>
+                        <td><span class="crossmark">✗</span> 需要配置</td>
+                    </tr>
+                    <tr>
+                        <td><strong>数据控制</strong></td>
+                        <td><span class="crossmark">✗</span> 第三方存储</td>
+                        <td><span class="checkmark">✓</span> 完全控制</td>
+                    </tr>
+                    <tr>
+                        <td><strong>成本</strong></td>
+                        <td>按使用量计费</td>
+                        <td>固定成本（更经济）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>可扩展性</strong></td>
+                        <td>自动扩展</td>
+                        <td>手动扩展</td>
+                    </tr>
+                    <tr>
+                        <td><strong>性能</strong></td>
+                        <td>受限于平台</td>
+                        <td><span class="checkmark">✓</span> 可优化</td>
+                    </tr>
+                    <tr>
+                        <td><strong>隐私保护</strong></td>
+                        <td>依赖第三方</td>
+                        <td><span class="checkmark">✓</span> 完全私有</td>
+                    </tr>
+                    <tr>
+                        <td><strong>维护成本</strong></td>
+                        <td><span class="checkmark">✓</span> 平台负责</td>
+                        <td><span class="crossmark">✗</span> 自己负责</td>
+                    </tr>
+                    <tr>
+                        <td><strong>离线运行</strong></td>
+                        <td><span class="crossmark">✗</span> 不支持</td>
+                        <td><span class="checkmark">✓</span> 支持</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Slide 4: Storage Architecture -->
+        <div class="slide">
+            <h2>💾 存储架构演变</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>☁️ Vercel Blob Storage</h3>
+                    <p><strong>优点：</strong></p>
+                    <ul>
+                        <li>✓ 无需配置</li>
+                        <li>✓ 自动扩展</li>
+                        <li>✓ 全球 CDN</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>缺点：</strong></p>
+                    <ul>
+                        <li>✗ 数据在云端</li>
+                        <li>✗ 存储费用</li>
+                        <li>✗ Private 访问复杂</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📁 Local File Storage</h3>
+                    <p><strong>优点：</strong></p>
+                    <ul>
+                        <li>✓ 数据本地化</li>
+                        <li>✓ 无额外费用</li>
+                        <li>✓ 完全控制</li>
+                        <li>✓ 支持离线</li>
+                    </ul>
+                    <p style="margin-top: 10px;"><strong>缺点：</strong></p>
+                    <ul>
+                        <li>✗ 需要管理存储</li>
+                        <li>✗ 需要备份</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🔄 智能切换</h3>
+                    <p><strong>自动检测环境：</strong></p>
+                    <ul>
+                        <li>• <code>STORAGE_PATH</code> 设置 → 本地存储</li>
+                        <li>• <code>BLOB_READ_WRITE_TOKEN</code> 设置 → Vercel Blob</li>
+                        <li>• 代码零改动，透明切换</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// 存储适配器自动选择</span>
+<span class="keyword">function</span> getStorageType(): <span class="string">'local' | 'vercel-blob'</span> {
+  <span class="keyword">if</span> (process.env.STORAGE_PATH) {
+    <span class="keyword">return</span> <span class="string">'local'</span>;  <span class="comment">// Docker 自托管</span>
+  }
+  <span class="keyword">if</span> (process.env.BLOB_READ_WRITE_TOKEN) {
+    <span class="keyword">return</span> <span class="string">'vercel-blob'</span>;  <span class="comment">// Vercel 部署</span>
+  }
+  <span class="keyword">return</span> <span class="string">'local'</span>;  <span class="comment">// 默认本地</span>
+}
+            </div>
+        </div>
+
+        <!-- Slide 5: Migration Steps -->
+        <div class="slide">
+            <h2>🔄 迁移步骤</h2>
+
+            <ul class="step-list">
+                <li class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <strong>环境准备</strong>
+                        <p>安装 Docker 和 Docker Compose，准备服务器环境</p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <strong>配置环境变量</strong>
+                        <p>复制 .env.docker.example 到 .env，填写必要的配置</p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <strong>启动服务</strong>
+                        <p>运行 docker-compose up -d 启动所有容器</p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <strong>数据迁移</strong>
+                        <p>从 Vercel Blob 下载 PDF 文件，导入数据库数据</p>
+                    </div>
+                </li>
+
+                <li class="step-item">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <strong>验证部署</strong>
+                        <p>检查所有服务状态，测试功能是否正常</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Slide 6: Quick Start -->
+        <div class="slide">
+            <h2>⚡ 快速开始</h2>
+
+            <div class="code-block">
+<span class="comment"># 1. 克隆代码</span>
+git clone https://github.com/yourusername/agent-pdf.git
+cd agent-pdf
+
+<span class="comment"># 2. 配置环境变量</span>
+cp .env.docker.example .env
+nano .env  <span class="comment"># 编辑配置</span>
+
+<span class="comment"># 3. 创建数据目录</span>
+mkdir -p data/{postgres,redis,qdrant,uploads}
+
+<span class="comment"># 4. 启动服务</span>
+cd docker
+docker-compose up -d
+
+<span class="comment"># 5. 查看日志</span>
+docker-compose logs -f
+
+<span class="comment"># 6. 访问应用</span>
+open http://localhost
+            </div>
+
+            <div class="highlight-box">
+                <strong>⚠️ 重要：</strong>首次启动前请确保已设置：
+                <ul>
+                    <li>• DB_PASSWORD（数据库密码）</li>
+                    <li>• REDIS_PASSWORD（Redis 密码）</li>
+                    <li>• NEXTAUTH_SECRET（认证密钥）</li>
+                    <li>• ALIBABA_API_KEY（AI 模型密钥）</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 7: Performance Metrics -->
+        <div class="slide">
+            <h2>📈 性能指标</h2>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">2-5s</div>
+                    <div class="metric-label">冷启动时间</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">&lt;300ms</div>
+                    <div class="metric-label">API 响应时间</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">50+</div>
+                    <div class="metric-label">并发用户数 (4C8G)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">99.9%</div>
+                    <div class="metric-label">可用性</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 40px;">🔧 优化建议</h3>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-title">数据库优化</div>
+                    <ul>
+                        <li>• 调整 shared_buffers</li>
+                        <li>• 优化查询索引</li>
+                        <li>• 连接池配置</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">缓存策略</div>
+                    <ul>
+                        <li>• Redis 会话存储</li>
+                        <li>• PDF 内容缓存</li>
+                        <li>• 向量检索缓存</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">负载均衡</div>
+                    <ul>
+                        <li>• Nginx 反向代理</li>
+                        <li>• 多实例部署</li>
+                        <li>• 健康检查</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Security -->
+        <div class="slide">
+            <h2>🔒 安全最佳实践</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <div class="feature-title">网络隔离</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• 数据库仅内部访问</li>
+                            <li>• Redis 不暴露公网</li>
+                            <li>• 使用 Docker 网络</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-title">访问控制</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• IP 白名单</li>
+                            <li>• 速率限制</li>
+                            <li>• 认证授权</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-title">数据加密</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• SSL/TLS 证书</li>
+                            <li>• 密码加密存储</li>
+                            <li>• 环境变量保护</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-title">备份策略</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• 定期数据库备份</li>
+                            <li>• PDF 文件备份</li>
+                            <li>• 版本控制</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">👀</div>
+                    <div class="feature-title">日志监控</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• 访问日志</li>
+                            <li>• 错误追踪</li>
+                            <li>• 性能监控</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🚨</div>
+                    <div class="feature-title">安全更新</div>
+                    <div class="feature-desc">
+                        <ul>
+                            <li>• 定期更新镜像</li>
+                            <li>• 依赖漏洞扫描</li>
+                            <li>• 安全补丁</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ 重要提醒：</strong>生产环境必须启用 HTTPS，使用 Let's Encrypt 免费证书
+            </div>
+        </div>
+
+        <!-- Slide 9: Troubleshooting -->
+        <div class="slide">
+            <h2>🔧 常见问题解决</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-title">容器无法启动</div>
+                    <p class="feature-desc">
+                        检查日志：<code>docker-compose logs -f [service]</code><br>
+                        检查端口：<code>sudo netstat -tulpn</code>
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">数据库连接失败</div>
+                    <p class="feature-desc">
+                        检查网络：<code>docker network inspect</code><br>
+                        验证环境变量：<code>docker exec env | grep DATABASE</code>
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">文件无法上传</div>
+                    <p class="feature-desc">
+                        检查权限：<code>ls -la data/uploads/</code><br>
+                        修正权限：<code>chown -R 1001:1001 data/</code>
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">性能问题</div>
+                    <p class="feature-desc">
+                        查看资源：<code>docker stats</code><br>
+                        增加限制：调整 docker-compose.yml
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">忘记密码</div>
+                    <p class="feature-desc">
+                        重置 DB：<code>docker exec psql -c "ALTER USER..."</code><br>
+                        重置 Redis：编辑 docker-compose.yml
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">数据恢复</div>
+                    <p class="feature-desc">
+                        从备份恢复：<code>docker cp backup.sql container:/tmp/</code><br>
+                        导入数据：<code>psql -f /tmp/backup.sql</code>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Summary -->
+        <div class="slide">
+            <h2>✨ 总结</h2>
+
+            <div class="highlight-box">
+                <h3>🎯 Docker 自托管部署为您带来：</h3>
+                <ul style="margin-top: 15px; margin-left: 20px;">
+                    <li>✅ 完全的数据控制和隐私保护</li>
+                    <li>✅ 长期成本优化</li>
+                    <li>✅ 灵活的性能调优</li>
+                    <li>✅ 离线部署能力</li>
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 40px;">📚 相关文档</h3>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-title">📖 完整迁移指南</div>
+                    <p class="feature-desc">MIGRATION_GUIDE.md</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">⚙️ 环境配置</div>
+                    <p class="feature-desc">.env.docker.example</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-title">🐳 Docker 配置</div>
+                    <p class="feature-desc">docker/docker-compose.yml</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; text-align: center;">
+                <p style="font-size: 18px; color: #667eea;">
+                    <strong>🚀 立即开始您的 Docker 自托管之旅！</strong>
+                </p>
+                <p style="margin-top: 10px; color: #666;">
+                    如有问题，请查看项目文档或提交 Issue
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-button" id="prevBtn" onclick="previousSlide()">← 上一页</button>
+            <button class="nav-button" id="nextBtn" onclick="nextSlide()">下一页 →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const progressFill = document.getElementById('progressFill');
+        const currentSlideSpan = document.getElementById('currentSlide');
+        const totalSlidesSpan = document.getElementById('totalSlides');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        totalSlidesSpan.textContent = totalSlides;
+
+        function updateSlide() {
+            // Remove active class from all slides
+            slides.forEach(slide => slide.classList.remove('active'));
+
+            // Add active class to current slide
+            slides[currentSlide].classList.add('active');
+
+            // Update progress bar
+            const progress = ((currentSlide + 1) / totalSlides) * 100;
+            progressFill.style.width = progress + '%';
+
+            // Update counter
+            currentSlideSpan.textContent = currentSlide + 1;
+
+            // Update button states
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function previousSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                event.preventDefault();
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                previousSlide();
+            }
+        });
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>

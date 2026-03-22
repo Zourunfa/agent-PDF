@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复私有 Blob Storage 403 错误</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .presentation {
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .slides-container {
+            height: 100%;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 60px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+
+        /* Slide 1: Title */
+        .slide-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .slide-1 h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .slide-1 .subtitle {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .error-icon {
+            font-size: 5rem;
+            margin: 40px 0;
+            animation: bounce 2s infinite;
+        }
+
+        /* Slide 2: Problem */
+        .problem-box {
+            background: #fff5f5;
+            border-left: 4px solid #fc8181;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #a0aec0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .code-block .error {
+            color: #fc8181;
+        }
+
+        .code-block .highlight {
+            color: #63b3ed;
+        }
+
+        /* Slide 3: Root Cause */
+        .diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 40px 0;
+            gap: 20px;
+        }
+
+        .flow-box {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .arrow {
+            font-size: 2rem;
+            color: #667eea;
+            animation: pulse 1.5s infinite;
+        }
+
+        .arrow.error {
+            color: #fc8181;
+        }
+
+        .arrow.success {
+            color: #48bb78;
+        }
+
+        /* Slide 4: Solution */
+        .solution-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 20px 0;
+        }
+
+        .solution-card h3 {
+            margin-bottom: 15px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        /* Slide 5: Code Changes */
+        .code-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .code-panel {
+            background: #2d3748;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-panel-header {
+            background: #1a202c;
+            padding: 12px 20px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .code-panel-header.old {
+            color: #fc8181;
+        }
+
+        .code-panel-header.new {
+            color: #48bb78;
+        }
+
+        .code-panel-content {
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #a0aec0;
+            overflow-x: auto;
+        }
+
+        /* Slide 6: Technical Details */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .detail-card {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 12px;
+            border-top: 4px solid #667eea;
+        }
+
+        .detail-card h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .detail-card p {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        /* Slide 7: Result */
+        .result-box {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .result-box h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .checklist {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .checklist-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist-item:before {
+            content: "✓";
+            color: #48bb78;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Slide 8: Summary */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .summary-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .summary-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .summary-card .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .summary-card h4 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .summary-card p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        /* Navigation */
+        .nav {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 1);
+            transform: scale(1.05);
+        }
+
+        .nav-dots {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: white;
+            transform: scale(1.3);
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            z-index: 100;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px;
+            }
+
+            .slide-1 h1 {
+                font-size: 2rem;
+            }
+
+            .code-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-grid,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        h2 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+
+        p {
+            color: #4a5568;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <div class="slides-container">
+            <!-- Slide 1: Title -->
+            <div class="slide slide-1 active">
+                <div class="slide-number">1/8</div>
+                <div class="error-icon">⚠️</div>
+                <h1>修复私有 Blob Storage 403 错误</h1>
+                <p class="subtitle">生产环境 PDF 文件无法加载的问题排查与解决</p>
+            </div>
+
+            <!-- Slide 2: Problem -->
+            <div class="slide">
+                <div class="slide-number">2/8</div>
+                <h2>🔴 问题现象</h2>
+
+                <div class="problem-box">
+                    <p><strong>错误信息：</strong></p>
+                    <div class="code-block">
+<span class="error">HTTP 403 Forbidden</span>
+URL: https://x69rivtgzwt9vjjb.private.blob.vercel-storage.com/pdfs/xxx.pdf
+
+[Chat API] ✗ No PDF text content available
+                    </div>
+                </div>
+
+                <p><strong>问题位置：</strong></p>
+                <div class="code-block">
+<span class="highlight">// src/app/api/pdf/[id]/route.ts 第 93-97 行</span>
+if (storagePath && storagePath.startsWith('http')) {
+  console.log('[PDF API] ☁️ Found Blob URL, redirecting...');
+  return NextResponse.redirect(storagePath);  <span class="error">// ❌ 403 错误</span>
+}
+                </div>
+
+                <p>✗ PDF 文件无法预览<br>✗ 聊天功能无法获取文本内容</p>
+            </div>
+
+            <!-- Slide 3: Root Cause -->
+            <div class="slide">
+                <div class="slide-number">3/8</div>
+                <h2>🔍 根本原因</h2>
+
+                <p class="highlight">为什么会 403？</p>
+
+                <div class="diagram">
+                    <div class="flow-box">浏览器</div>
+                    <div class="arrow">→</div>
+                    <div class="flow-box">API 路由</div>
+                    <div class="arrow error">→</div>
+                    <div class="flow-box" style="border-color: #fc8181;">Private Blob URL</div>
+                </div>
+
+                <p style="margin: 20px 0; text-align: center;">❌ 浏览器直接访问私有 Blob URL 时没有认证信息</p>
+
+                <div class="code-block">
+<span class="error">问题：</span> Private Blob URL 需要认证 token
+<span class="error">现状：</span> 浏览器 redirect 请求不带 BLOB_READ_WRITE_TOKEN
+<span class="error">结果：</span> Vercel Blob Storage 拒绝未认证访问 → 403 Forbidden
+                </div>
+            </div>
+
+            <!-- Slide 4: Solution -->
+            <div class="slide">
+                <div class="slide-number">4/8</div>
+                <h2>💡 解决方案</h2>
+
+                <div class="solution-card">
+                    <h3>服务端代理下载</h3>
+                    <p>在 /api/pdf/[id] 路由中，对 Blob URL 使用服务端代理下载，而不是重定向</p>
+                </div>
+
+                <div class="diagram">
+                    <div class="flow-box">浏览器</div>
+                    <div class="arrow">→</div>
+                    <div class="flow-box">API 路由</div>
+                    <div class="arrow success">→</div>
+                    <div class="flow-box" style="border-color: #48bb78;">服务端下载 Blob</div>
+                    <div class="arrow success">→</div>
+                    <div class="flow-box" style="border-color: #48bb78;">返回文件</div>
+                </div>
+
+                <ul class="feature-list">
+                    <li>服务端拥有 BLOB_READ_WRITE_TOKEN，可以访问 private blobs</li>
+                    <li>用户无需直接访问 Blob URL</li>
+                    <li>保持权限验证（只有 PDF 所有者才能访问）</li>
+                </ul>
+            </div>
+
+            <!-- Slide 5: Code Changes -->
+            <div class="slide">
+                <div class="slide-number">5/8</div>
+                <h2>📝 代码修改</h2>
+
+                <p style="margin-bottom: 20px;"><strong>新增 Blob 下载函数</strong></p>
+                <div class="code-block">
+<span class="highlight">// src/lib/storage/blob-storage.ts</span>
+import { put, head, del, <span class="highlight">get</span> } from '@vercel/blob';
+
+export async function downloadPDFFromBlob(blobUrl: string): Promise&lt;Buffer&gt; {
+  const result = await get(blobUrl, { access: 'private' });
+
+  // Read stream to buffer
+  const reader = result.stream.getReader();
+  const chunks: Uint8Array[] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+
+  return Buffer.concat(chunks);
+}
+                </div>
+            </div>
+
+            <!-- Slide 6: Code Changes 2 -->
+            <div class="slide">
+                <div class="slide-number">6/8</div>
+                <h2>🔄 修改对比</h2>
+
+                <div class="code-comparison">
+                    <div class="code-panel">
+                        <div class="code-panel-header old">❌ 修改前（重定向）</div>
+                        <div class="code-panel-content">
+if (storagePath && storagePath.startsWith('http')) {
+  console.log('[PDF API] ☁️ Found Blob URL, redirecting...');
+  return NextResponse.redirect(storagePath);
+  <span class="error">// ❌ 403 Forbidden</span>
+}
+                        </div>
+                    </div>
+
+                    <div class="code-panel">
+                        <div class="code-panel-header new">✅ 修改后（代理下载）</div>
+                        <div class="code-panel-content">
+if (storagePath && storagePath.startsWith('http')) {
+  console.log('[PDF API] ☁️ Proxying download...');
+
+  const { downloadPDFFromBlob } = await import('@/lib/storage/blob-storage');
+  const fileBuffer = await downloadPDFFromBlob(storagePath);
+
+  return new NextResponse(fileBuffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+  <span class="highlight">// ✅ 返回文件内容</span>
+}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 7: Technical Details -->
+            <div class="slide">
+                <div class="slide-number">7/8</div>
+                <h2>⚙️ 技术细节</h2>
+
+                <div class="detail-grid">
+                    <div class="detail-card">
+                        <h4>为什么 redirect 会 403？</h4>
+                        <p>Private Blob URL 需要认证 token，浏览器 redirect 请求时不带 BLOB_READ_WRITE_TOKEN，Vercel Blob Storage 拒绝未认证访问。</p>
+                    </div>
+
+                    <div class="detail-card">
+                        <h4>为什么代理下载可以？</h4>
+                        <p>服务端请求时自动使用环境变量中的 BLOB_READ_WRITE_TOKEN，@vercel/blob SDK 自动处理认证，服务端下载后返回给客户端。</p>
+                    </div>
+
+                    <div class="detail-card">
+                        <h4>性能考虑</h4>
+                        <p>服务端代理会增加延迟和服务器负载，但通过 Cache-Control 头可以减少重复下载。对于大文件，未来可考虑流式传输。</p>
+                    </div>
+
+                    <div class="detail-card">
+                        <h4>同样修复了 Parse API</h4>
+                        <p>在 src/app/api/parse/route.ts 中也添加了 Blob URL 下载逻辑，确保解析时能正确读取文件内容。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 8: Result -->
+            <div class="slide">
+                <div class="slide-number">8/8</div>
+                <h2>✅ 修复结果</h2>
+
+                <div class="result-box">
+                    <h2>🎉 问题已解决！</h2>
+                    <p>Private Blob URL 通过服务端代理访问</p>
+                </div>
+
+                <div class="checklist">
+                    <div class="checklist-item">PDF 预览能正常显示（不再 403）</div>
+                    <div class="checklist-item">聊天功能正常工作（有文本内容）</div>
+                    <div class="checklist-item">权限验证正常（只能访问自己的 PDF）</div>
+                    <div class="checklist-item">错误处理完善（下载失败有明确提示）</div>
+                </div>
+
+                <p style="text-align: center; margin-top: 30px; color: #667eea; font-weight: 600;">
+                    提交 ID: 0d6a2f4
+                </p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <button class="nav-btn" onclick="prevSlide()">← 上一页</button>
+            <button class="nav-btn" onclick="nextSlide()">下一页 →</button>
+        </div>
+
+        <div class="nav-dots">
+            <div class="dot active" onclick="goToSlide(0)"></div>
+            <div class="dot" onclick="goToSlide(1)"></div>
+            <div class="dot" onclick="goToSlide(2)"></div>
+            <div class="dot" onclick="goToSlide(3)"></div>
+            <div class="dot" onclick="goToSlide(4)"></div>
+            <div class="dot" onclick="goToSlide(5)"></div>
+            <div class="dot" onclick="goToSlide(6)"></div>
+            <div class="dot" onclick="goToSlide(7)"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+
+        function updateSlide() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'prev');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else if (index < currentSlide) {
+                    slide.classList.add('prev');
+                }
+            });
+
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            }
+        });
+
+        // Touch support
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: pdf-chat-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: pdf_chat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pdf_chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: pdf-chat-redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  # Qdrant 向量数据库
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: pdf-chat-qdrant
+    restart: always
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - app-network
+
+  # Next.js 应用实例 1
+  app1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pdf-chat-app1
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-changeme}@postgres:5432/pdf_chat
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - QDRANT_URL=http://qdrant:6333
+      - STORAGE_PATH=/data/uploads
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - ALIBABA_API_KEY=${ALIBABA_API_KEY}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost}
+    volumes:
+      - ./data/uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js 应用实例 2
+  app2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pdf-chat-app2
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-changeme}@postgres:5432/pdf_chat
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - QDRANT_URL=http://qdrant:6333
+      - STORAGE_PATH=/data/uploads
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - ALIBABA_API_KEY=${ALIBABA_API_KEY}
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost}
+    volumes:
+      - ./data/uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx 负载均衡
+  nginx:
+    image: nginx:alpine
+    container_name: pdf-chat-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/uploads:/data/uploads:ro
+    depends_on:
+      - app1
+      - app2
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
