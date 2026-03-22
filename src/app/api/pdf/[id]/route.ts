@@ -90,10 +90,42 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     console.log('[PDF API] ✓ Found in database:', { storagePath, filename });
 
-    // 如果是 Blob URL，返回重定向或代理请求
+    // 如果是 Blob URL，使用服务端代理下载（避免 private blob 403）
     if (storagePath && storagePath.startsWith('http')) {
-      console.log('[PDF API] ☁️ Found Blob URL, redirecting...');
-      return NextResponse.redirect(storagePath);
+      console.log('[PDF API] ☁️ Found Blob URL, proxying download...');
+
+      try {
+        const { downloadPDFFromBlob } = await import('@/lib/storage/blob-storage');
+        const fileBuffer = await downloadPDFFromBlob(storagePath);
+
+        console.log('[PDF API] ✓ Blob downloaded successfully, size:', fileBuffer.length, 'bytes');
+
+        return new NextResponse(fileBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Length': fileBuffer.length.toString(),
+            'Content-Disposition': `inline; filename="${encodeURIComponent(filename)}"`,
+            'Cache-Control': 'public, max-age=3600',
+            'Accept-Ranges': 'bytes',
+          },
+        });
+      } catch (blobError) {
+        console.error('[PDF API] ❌ Failed to download from Blob:', blobError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'BLOB_DOWNLOAD_FAILED',
+              message: '无法从 Blob Storage 下载文件',
+              debug: {
+                storagePath,
+                error: (blobError as Error).message,
+              },
+            },
+          },
+          { status: 502 }
+        );
+      }
     }
 
     // 如果是临时路径，尝试读取

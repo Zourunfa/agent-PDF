@@ -3,7 +3,7 @@
  * Provides persistent storage across serverless function instances
  */
 
-import { put, head, del } from '@vercel/blob';
+import { put, head, del, get } from '@vercel/blob';
 
 /**
  * Check Blob Storage configuration
@@ -90,4 +90,45 @@ export async function deletePDFFromBlob(pdfId: string): Promise<void> {
  */
 export function getPDFBlobUrl(pdfId: string): string {
   return `${process.env.BLOB_READ_WRITE_TOKEN ? 'https://' : ''}${process.env.VERCEL_URL}/pdfs/${pdfId}.pdf`;
+}
+
+/**
+ * Download PDF from Vercel Blob Storage (for private access)
+ */
+export async function downloadPDFFromBlob(blobUrl: string): Promise<Buffer> {
+  try {
+    console.log(`[Blob Storage] Downloading from: ${blobUrl}`);
+
+    const result = await get(blobUrl, { access: 'private' });
+
+    if (!result) {
+      throw new Error('Blob not found');
+    }
+
+    // Read stream to buffer
+    const reader = result.stream.getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const buffer = Buffer.concat(chunks);
+    console.log(`[Blob Storage] ✓ Downloaded ${buffer.length} bytes`);
+    return buffer;
+  } catch (error) {
+    console.error(`[Blob Storage] ✗ Download failed:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Check if URL is a Vercel Blob URL
+ */
+export function isBlobUrl(url: string): boolean {
+  return url.includes('.blob.vercel-storage.com') ||
+         url.includes('public.blob.vercel-storage.com') ||
+         url.includes('private.blob.vercel-storage.com');
 }
