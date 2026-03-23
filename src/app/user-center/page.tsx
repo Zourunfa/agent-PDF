@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { usePageScrollable } from '@/hooks/usePageScrollable';
 import { QuotaDisplay } from '@/components/quota/QuotaDisplay';
 import {
   Layout,
@@ -42,6 +43,13 @@ const { Content } = Layout;
 export default function UserCenterPage() {
   const { user, profile, loading, isPremium } = useAuth();
   const router = useRouter();
+
+  // Enable page scrolling
+  usePageScrollable({
+    enableDefense: true,
+    defenseInterval: 1000,
+    debug: process.env.NODE_ENV === 'development',
+  });
 
   useEffect(() => {
     if (!loading && !user) {

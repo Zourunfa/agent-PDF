@@ -20,6 +20,7 @@ import {
   MenuOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@/lib/auth/hooks';
+import { usePageScrollable } from '@/hooks/usePageScrollable';
 
 const { Sider, Content } = Layout;
 
@@ -45,38 +46,12 @@ export function UserCenterLayout({ children }: UserCenterLayoutProps) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // 启用页面级滚动（强制覆盖高度限制）
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const nextDiv = document.getElementById('__next');
-
-    // 保存原始样式值
-    const originalHtmlHeight = html.style.height;
-    const originalBodyHeight = body.style.height;
-    const originalBodyOverflow = body.style.overflow;
-    const originalNextHeight = nextDiv?.style.height || '';
-
-    // 添加 class 并强制覆盖容器高度
-    document.body.classList.add('page-scrollable');
-    html.style.height = 'auto';
-    body.style.height = 'auto';
-    body.style.overflowY = 'auto';
-    if (nextDiv) {
-      nextDiv.style.height = 'auto';
-    }
-
-    // 清理：恢复原始值
-    return () => {
-      document.body.classList.remove('page-scrollable');
-      html.style.height = originalHtmlHeight;
-      body.style.height = originalBodyHeight;
-      body.style.overflow = originalBodyOverflow;
-      if (nextDiv) {
-        nextDiv.style.height = originalNextHeight;
-      }
-    };
-  }, []);
+  // 启用页面级滚动（带防御机制）
+  usePageScrollable({
+    enableDefense: true,
+    defenseInterval: 1000,
+    debug: process.env.NODE_ENV === 'development',
+  });
 
   const menuItems = [
     {

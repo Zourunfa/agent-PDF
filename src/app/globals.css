@@ -73,12 +73,58 @@
 
   /* Default: fixed layout mode (for PDF chat pages) */
   body:not(.page-scrollable) {
-    overflow: hidden;
+    overflow: hidden !important;
   }
 
   #__next {
     width: 100%;
     height: 100%;
+  }
+
+  /* Page scrollable mode (for user center, etc.) */
+  body.page-scrollable {
+    overflow: auto !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  body.page-scrollable #__next {
+    height: auto !important;
+    min-height: 100vh !important;
+  }
+
+  /* Enhanced page scrollable mode - higher priority */
+  html body.page-scrollable {
+    overflow: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100vh !important;
+  }
+
+  html body.page-scrollable #__next {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Override any nested layout components */
+  html body.page-scrollable [class*="Layout"],
+  html body.page-scrollable [class*="layout"] {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Ant Design Layout overrides */
+  html body.page-scrollable .ant-layout,
+  html body.page-scrollable .ant-layout-content {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   html, body {

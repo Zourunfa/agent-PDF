@@ -217,3 +217,19 @@ export function useAuth() {
     refreshProfile,
   };
 }
+
+/**
+ * 登录成功后调用的方法
+ * 确保认证状态及时更新
+ */
+export async function onLoginSuccess() {
+  // 等待一小段时间确保 Supabase session 已建立
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // 触发页面重新获取认证状态
+  // 使用 router.refresh() 或者直接刷新页面
+  if (typeof window !== 'undefined') {
+    // 使用温和的刷新方式，保留状态
+    window.location.reload();
+  }
+}

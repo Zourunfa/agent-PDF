@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 
 export default function TestDeletePage() {
   const [email, setEmail] = useState('wangfengaf@gmail.com');
@@ -113,8 +114,9 @@ export default function TestDeletePage() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
-      <h1>🗑️ 删除用户工具</h1>
+    <AdminLayout>
+      <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
+        <h1>🗑️ 删除用户工具</h1>
 
       <div style={{ background: '#f0f9ff', padding: 15, borderRadius: 8, marginBottom: 20 }}>
         <h3 style={{ marginTop: 0 }}>通过邮箱删除用户</h3>
@@ -201,6 +203,7 @@ export default function TestDeletePage() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

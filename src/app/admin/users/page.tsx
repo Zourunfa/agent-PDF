@@ -22,6 +22,7 @@ import {
   Typography,
   Dropdown,
   Input,
+  Spin,
 } from 'antd';
 import {
   DeleteOutlined,
@@ -35,6 +36,8 @@ import {
 import { useRouter } from 'next/navigation';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useAdminAuth } from '@/lib/auth/useAdminAuth';
 
 const { Title, Text } = Typography;
 
@@ -61,29 +64,45 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const { adminToken, checking } = useAdminAuth();
 
-  // 检查管理员登录状态
+  // 权限检查完成后获取用户列表
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      message.warning('请先登录');
-      router.push('/admin');
-      return;
+    if (adminToken && !checking) {
+      fetchUsers();
     }
-    setAdminToken(token);
-    fetchUsers();
-  }, [router]);
+  }, [adminToken, checking]);
+
+  // 权限检查期间显示加载状态
+  if (checking) {
+    return (
+      <AdminLayout>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '400px'
+        }}>
+          <Spin size="large" tip="验证权限中..." />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // 权限验证失败时返回空
+  if (!adminToken) {
+    return null;
+  }
 
   // 获取用户列表
   const fetchUsers = async () => {
+    if (!adminToken) return;
+
     try {
       setLoading(true);
-      const token = localStorage.getItem('adminToken');
-
       const response = await fetch('/api/admin/users', {
         headers: {
-          'X-Admin-Token': token || '',
+          'X-Admin-Token': adminToken,
         },
       });
 
@@ -121,14 +140,17 @@ export default function AdminUsersPage() {
     setUsers(users.filter((u) => u.id !== userId));
 
     try {
-      const token = localStorage.getItem('adminToken');
+      if (!adminToken) {
+        setUsers(previousUsers);
+        return;
+      }
 
       console.log('[Admin Delete User] 发送删除请求到:', `/api/admin/users/${userId}`);
 
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'X-Admin-Token': token || '',
+          'X-Admin-Token': adminToken,
         },
       });
 
@@ -156,14 +178,14 @@ export default function AdminUsersPage() {
 
   // 更新用户角色
   const handleUpdateRole = async (userId: string, newRole: string) => {
-    try {
-      const token = localStorage.getItem('adminToken');
+    if (!adminToken) return;
 
+    try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Token': token || '',
+          'X-Admin-Token': adminToken,
         },
         body: JSON.stringify({ role: newRole }),
       });
@@ -301,7 +323,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f2f5', padding: 24 }}>
+    <AdminLayout>
       {/* Header */}
       <Card style={{ marginBottom: 24, borderRadius: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -392,6 +414,6 @@ export default function AdminUsersPage() {
           }}
         />
       </Card>
-    </div>
+    </AdminLayout>
   );
 }

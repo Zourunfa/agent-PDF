@@ -67,11 +67,12 @@ function LoginForm() {
       // 检查是否有重定向路径
       const redirectPath = searchParams.get('redirect');
 
-      // 短暂延迟确保 session 已设置
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // 延迟确保 Supabase session 已建立并触发 onAuthStateChange 事件
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      // 跳转到目标页面或首页
-      router.push(redirectPath || '/');
+      // 使用 window.location.href 强制完全重新加载页面
+      // 这会触发 useAuth() hook 重新初始化并获取最新的 session
+      window.location.href = redirectPath || '/';
     } catch (err: any) {
       console.error('Login error:', err);
       message.error('登录失败，请检查网络连接');

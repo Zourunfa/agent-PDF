@@ -1,6 +1,7 @@
 // 认证导航栏组件
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/hooks';
@@ -16,6 +17,33 @@ export function AuthHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, loading, isAuthenticated } = useAuth();
+
+  // 检测登录状态变化：如果当前没有加载完且已登录，自动刷新
+  useEffect(() => {
+    if (loading === false && isAuthenticated === false) {
+      // 检查是否有 Supabase session 但还没有获取到用户信息
+      const checkSession = async () => {
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const { data: { session } } = await supabase.auth.getSession();
+
+          // 如果有 session 但 useAuth 还没获取到，触发刷新
+          if (session?.user && !user) {
+            console.log('[AuthHeader] Detected session but no user data, refreshing...');
+            // 温和刷新
+            window.location.reload();
+          }
+        } catch (error) {
+          console.error('[AuthHeader] Error checking session:', error);
+        }
+      };
+
+      // 延迟检查，确保 hook 已经尝试获取
+      const timeoutId = setTimeout(checkSession, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading, isAuthenticated, user]);
 
   // 在登录、注册、密码重置、邮箱验证页面不显示顶部栏
   const hideHeaderPaths = ['/login', '/register', '/reset-password', '/verify-email', '/forgot-password'];
