@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-PDF 项目架构文档</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .nav a {
+            color: var(--gray);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav a:hover, .nav a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* Tech Stack Grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .tech-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .tech-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .tech-item .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .tech-item h3 {
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .tech-item p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* API Table */
+        .api-section {
+            margin-bottom: 30px;
+        }
+
+        .api-section h3 {
+            color: var(--secondary);
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-radius: 8px;
+        }
+
+        .api-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .api-table th,
+        .api-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .api-table th {
+            background: var(--light);
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .api-table tr:hover {
+            background: #f1f5f9;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .method.get { background: #dbeafe; color: #1d4ed8; }
+        .method.post { background: #dcfce7; color: #15803d; }
+        .method.put { background: #fef3c7; color: #b45309; }
+        .method.delete { background: #fee2e2; color: #b91c1c; }
+
+        /* Flow Diagrams */
+        .flow-container {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 12px;
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        .flow-title {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-width: 800px;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 120px;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .flow-box.green {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .flow-box.orange {
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .flow-box.red {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .flow-arrow {
+            color: #94a3b8;
+            font-size: 1.5rem;
+        }
+
+        /* ER Diagram */
+        .er-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .er-table {
+            background: #f8fafc;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--border);
+        }
+
+        .er-table-header {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .er-table-body {
+            padding: 15px;
+        }
+
+        .er-field {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .er-field:last-child {
+            border-bottom: none;
+        }
+
+        .er-field-name {
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .er-field-type {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        .er-pk {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .er-fk {
+            color: var(--secondary);
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .code-block pre {
+            color: #e2e8f0;
+            font-family: 'Fira Code', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .code-comment { color: #64748b; }
+        .code-keyword { color: #c084fc; }
+        .code-string { color: #86efac; }
+        .code-function { color: #93c5fd; }
+        .code-type { color: #fbbf24; }
+
+        /* Learning Path */
+        .learning-path {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .learning-step {
+            position: relative;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .learning-step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: -50px;
+            top: 20px;
+            width: 30px;
+            height: 30px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .learning-step h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .learning-step ul {
+            margin-left: 20px;
+            color: var(--gray);
+        }
+
+        .learning-step li {
+            margin-bottom: 5px;
+        }
+
+        /* Architecture Diagram */
+        .arch-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .arch-layer {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .arch-box {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 15px 25px;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .arch-box.layer-api {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        }
+
+        .arch-box.layer-service {
+            border-color: var(--secondary);
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        }
+
+        .arch-box.layer-data {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .arch-connector {
+            width: 2px;
+            height: 30px;
+            background: var(--gray);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+            color: var(--gray);
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .nav {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .flow-diagram {
+                flex-direction: column;
+                min-width: auto;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Section divider */
+        .section-divider {
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 2px;
+            margin: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Agent-PDF 项目架构</h1>
+            <p>基于 AI 的 PDF 文档智能对话平台，支持向量检索和流式对话</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <a href="#overview" class="active">项目概述</a>
+            <a href="#tech-stack">技术栈</a>
+            <a href="#api">API 接口</a>
+            <a href="#database">数据库设计</a>
+            <a href="#flow">数据流向</a>
+            <a href="#architecture">服务架构</a>
+            <a href="#optimization">优化建议</a>
+            <a href="#learning">学习指南</a>
+        </nav>
+
+        <!-- Overview Section -->
+        <section id="overview" class="card">
+            <h2>项目概述</h2>
+            <p style="color: var(--gray); line-height: 1.8; margin-bottom: 20px;">
+                Agent-PDF 是一个基于 AI 的 PDF 文档智能对话平台，用户可以上传 PDF 文档并与文档内容进行智能对话。
+                系统支持游客体验和注册用户两种模式，实现了完整的用户认证、配额管理、向量检索和 AI 对话功能。
+            </p>
+
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="icon">📄</div>
+                    <h3>PDF 上传</h3>
+                    <p>支持多种格式解析</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🤖</div>
+                    <h3>AI 对话</h3>
+                    <p>流式响应体验</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🔐</div>
+                    <h3>用户认证</h3>
+                    <p>安全的身份验证</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">📊</div>
+                    <h3>配额管理</h3>
+                    <p>灵活的用量控制</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🔍</div>
+                    <h3>向量检索</h3>
+                    <p>语义化搜索</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">👥</div>
+                    <h3>游客模式</h3>
+                    <p>无门槛体验</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tech Stack Section -->
+        <section id="tech-stack" class="card">
+            <h2>技术栈</h2>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <div class="icon">⚛️</div>
+                    <h3>Next.js 14</h3>
+                    <p>App Router</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🎨</div>
+                    <h3>React 18</h3>
+                    <p>UI 组件库</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🐘</div>
+                    <h3>PostgreSQL</h3>
+                    <p>Supabase</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🌲</div>
+                    <h3>Pinecone</h3>
+                    <p>向量数据库</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🦜</div>
+                    <h3>LangChain</h3>
+                    <p>AI 框架</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">☁️</div>
+                    <h3>Vercel Blob</h3>
+                    <p>文件存储</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Section -->
+        <section id="api" class="card">
+            <h2>API 接口服务</h2>
+
+            <div class="api-section">
+                <h3>🔐 认证服务 /api/auth/</h3>
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>端点</th>
+                            <th>方法</th>
+                            <th>描述</th>
+                            <th>依赖</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>/api/auth/register</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>用户注册</td>
+                            <td>Supabase Auth, Email</td>
+                        </tr>
+                        <tr>
+                            <td>/api/auth/login</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>用户登录</td>
+                            <td>Supabase Auth</td>
+                        </tr>
+                        <tr>
+                            <td>/api/auth/logout</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>用户登出</td>
+                            <td>Supabase Auth</td>
+                        </tr>
+                        <tr>
+                            <td>/api/auth/me</td>
+                            <td><span class="method get">GET</span></td>
+                            <td>获取当前用户</td>
+                            <td>Supabase Auth</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>📄 PDF 服务 /api/pdfs/</h3>
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>端点</th>
+                            <th>方法</th>
+                            <th>描述</th>
+                            <th>依赖</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>/api/upload</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>上传 PDF</td>
+                            <td>Quota, Blob, Supabase</td>
+                        </tr>
+                        <tr>
+                            <td>/api/parse</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>解析 PDF</td>
+                            <td>Parser, Pinecone</td>
+                        </tr>
+                        <tr>
+                            <td>/api/pdfs/list</td>
+                            <td><span class="method get">GET</span></td>
+                            <td>获取 PDF 列表</td>
+                            <td>Supabase</td>
+                        </tr>
+                        <tr>
+                            <td>/api/pdfs/[id]</td>
+                            <td><span class="method get">GET</span> / <span class="method delete">DELETE</span></td>
+                            <td>PDF 详情/删除</td>
+                            <td>Supabase, Pinecone</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>💬 聊天服务 /api/chat/</h3>
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>端点</th>
+                            <th>方法</th>
+                            <th>描述</th>
+                            <th>依赖</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>/api/chat</td>
+                            <td><span class="method post">POST</span></td>
+                            <td>AI 对话 (SSE 流式)</td>
+                            <td>Quota, LangChain, Pinecone, Qwen</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="api-section">
+                <h3>📊 配额服务 /api/quota/</h3>
+                <table class="api-table">
+                    <thead>
+                        <tr>
+                            <th>端点</th>
+                            <th>方法</th>
+                            <th>描述</th>
+                            <th>依赖</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>/api/quota/stats</td>
+                            <td><span class="method get">GET</span></td>
+                            <td>配额统计</td>
+                            <td>Supabase</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Database Section -->
+        <section id="database" class="card">
+            <h2>数据库设计</h2>
+
+            <div class="er-container">
+                <div class="er-table">
+                    <div class="er-table-header">user_profiles</div>
+                    <div class="er-table-body">
+                        <div class="er-field">
+                            <span class="er-field-name er-pk">id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">email</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">name</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">role</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">status</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="er-table">
+                    <div class="er-table-header">user_pdfs</div>
+                    <div class="er-table-body">
+                        <div class="er-field">
+                            <span class="er-field-name er-pk">id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name er-fk">user_id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">filename</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">storage_path</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">parse_status</span>
+                            <span class="er-field-type">TEXT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="er-table">
+                    <div class="er-table-header">pdf_conversations</div>
+                    <div class="er-table-body">
+                        <div class="er-field">
+                            <span class="er-field-name er-pk">id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name er-fk">pdf_id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name er-fk">user_id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">message_count</span>
+                            <span class="er-field-type">INTEGER</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="er-table">
+                    <div class="er-table-header">quota_usage</div>
+                    <div class="er-table-body">
+                        <div class="er-field">
+                            <span class="er-field-name er-pk">id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name er-fk">user_id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name er-fk">quota_id</span>
+                            <span class="er-field-type">UUID</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">usage_count</span>
+                            <span class="er-field-type">INTEGER</span>
+                        </div>
+                        <div class="er-field">
+                            <span class="er-field-name">usage_date</span>
+                            <span class="er-field-type">DATE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <h3 style="margin-bottom: 20px;">数据库关系图</h3>
+            <div class="flow-container">
+                <div class="flow-title">实体关系图 (ER Diagram)</div>
+                <div class="flow-diagram">
+                    <div class="flow-box">auth.users<br><small>(Supabase)</small></div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box green">user_profiles</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box orange">user_pdfs</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box red">pdf_conversations</div>
+                </div>
+                <br><br>
+                <div class="flow-diagram">
+                    <div class="flow-box green">user_profiles</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box orange">quota_usage</div>
+                    <span class="flow-arrow">←</span>
+                    <div class="flow-box green">quota_definitions</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Flow Section -->
+        <section id="flow" class="card">
+            <h2>核心业务流程</h2>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="upload">PDF 上传</div>
+                <div class="tab" data-tab="parse">PDF 解析</div>
+                <div class="tab" data-tab="chat">AI 对话</div>
+            </div>
+
+            <div id="upload" class="tab-content active">
+                <div class="flow-container">
+                    <div class="flow-title">PDF 上传流程</div>
+                    <div class="flow-diagram">
+                        <div class="flow-box">Client</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box green">配额检查</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box orange">文件验证</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box red">Blob 存储</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">DB 保存</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="parse" class="tab-content">
+                <div class="flow-container">
+                    <div class="flow-title">PDF 解析流程</div>
+                    <div class="flow-diagram">
+                        <div class="flow-box">加载文件</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box green">PDF 解析</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box orange">文本分割</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box red">向量存储</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">更新状态</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chat" class="tab-content">
+                <div class="flow-container">
+                    <div class="flow-title">AI 对话流程</div>
+                    <div class="flow-diagram">
+                        <div class="flow-box">用户问题</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box green">配额检查</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box orange">向量检索</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box red">AI 生成</div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-box">SSE 流式返回</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="card">
+            <h2>服务层架构</h2>
+
+            <div class="arch-diagram">
+                <div class="arch-layer">
+                    <div class="arch-box layer-api" style="min-width: 300px;">
+                        <strong>API Routes Layer</strong><br>
+                        <small>upload, parse, chat, auth, quota</small>
+                    </div>
+                </div>
+
+                <div class="arch-connector"></div>
+
+                <div class="arch-layer">
+                    <div class="arch-box layer-service">Auth Layer</div>
+                    <div class="arch-box layer-service">Quota Layer</div>
+                    <div class="arch-box layer-service">Storage Layer</div>
+                    <div class="arch-box layer-service">Vector Layer</div>
+                </div>
+
+                <div class="arch-connector"></div>
+
+                <div class="arch-layer">
+                    <div class="arch-box layer-data">Supabase<br><small>PostgreSQL</small></div>
+                    <div class="arch-box layer-data">Pinecone<br><small>Vector DB</small></div>
+                    <div class="arch-box layer-data">Vercel Blob<br><small>Storage</small></div>
+                    <div class="arch-box layer-data">Qwen AI<br><small>LLM</small></div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <h3 style="margin-bottom: 20px;">目录结构</h3>
+            <div class="code-block">
+                <pre>
+src/
+├── <span class="code-keyword">app/</span>                    <span class="code-comment"># Next.js App Router</span>
+│   ├── <span class="code-keyword">api/</span>                <span class="code-comment"># API 路由</span>
+│   │   ├── auth/            <span class="code-comment"># 认证 API</span>
+│   │   ├── chat/            <span class="code-comment"># 聊天 API</span>
+│   │   ├── pdfs/            <span class="code-comment"># PDF 管理</span>
+│   │   └── upload/          <span class="code-comment"># 文件上传</span>
+│   └── page.tsx             <span class="code-comment"># 页面组件</span>
+├── <span class="code-keyword">components/</span>            <span class="code-comment"># React 组件</span>
+├── <span class="code-keyword">contexts/</span>              <span class="code-comment"># React Context</span>
+└── <span class="code-keyword">lib/</span>                   <span class="code-comment"># 核心库</span>
+    ├── auth/                <span class="code-comment"># 认证逻辑</span>
+    ├── pdf/                 <span class="code-comment"># PDF 处理</span>
+    ├── storage/             <span class="code-comment"># 存储服务</span>
+    ├── langchain/           <span class="code-comment"># AI 配置</span>
+    └── quota/               <span class="code-comment"># 配额管理</span>
+                </pre>
+            </div>
+        </section>
+
+        <!-- Optimization Section -->
+        <section id="optimization" class="card">
+            <h2>代码结构优化建议</h2>
+
+            <h3 style="margin-bottom: 20px;">推荐 MVC 架构重构</h3>
+
+            <div class="code-block">
+                <pre>
+src/
+├── <span class="code-keyword">app/</span>                    <span class="code-comment"># 视图层 (View)</span>
+│   └── api/v1/             <span class="code-comment"># API 版本控制</span>
+│
+├── <span class="code-keyword">controllers/</span>           <span class="code-comment"># 控制器层</span>
+│   ├── auth.controller.ts
+│   ├── pdf.controller.ts
+│   └── chat.controller.ts
+│
+├── <span class="code-keyword">services/</span>              <span class="code-comment"># 服务层 (业务逻辑)</span>
+│   ├── auth.service.ts
+│   ├── pdf.service.ts
+│   └── quota.service.ts
+│
+├── <span class="code-keyword">repositories/</span>          <span class="code-comment"># 数据访问层</span>
+│   ├── user.repository.ts
+│   └── pdf.repository.ts
+│
+├── <span class="code-keyword">models/</span>                <span class="code-comment"># 数据模型</span>
+├── <span class="code-keyword">dtos/</span>                  <span class="code-comment"># 数据传输对象</span>
+├── <span class="code-keyword">middlewares/</span>           <span class="code-comment"># 中间件</span>
+└── <span class="code-keyword">utils/</span>                 <span class="code-comment"># 工具函数</span>
+                </pre>
+            </div>
+
+            <div class="tech-grid" style="margin-top: 30px;">
+                <div class="tech-item">
+                    <div class="icon">🎯</div>
+                    <h3>关注点分离</h3>
+                    <p>每层只负责自己的职责</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🧪</div>
+                    <h3>可测试性</h3>
+                    <p>每层可独立单元测试</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">🔧</div>
+                    <h3>可维护性</h3>
+                    <p>修改一处不影响其他层</p>
+                </div>
+                <div class="tech-item">
+                    <div class="icon">📈</div>
+                    <h3>可扩展性</h3>
+                    <p>易于添加新功能</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Learning Section -->
+        <section id="learning" class="card">
+            <h2>前端工程师学习全栈指南</h2>
+
+            <div class="learning-path">
+                <div class="learning-step" data-step="1">
+                    <h4>第一阶段：掌握 Node.js 基础</h4>
+                    <ul>
+                        <li>JavaScript 运行时机制</li>
+                        <li>模块系统 (CommonJS/ESM)</li>
+                        <li>异步编程 (Promise/async-await)</li>
+                        <li>文件系统操作</li>
+                    </ul>
+                </div>
+
+                <div class="learning-step" data-step="2">
+                    <h4>第二阶段：学习后端框架</h4>
+                    <ul>
+                        <li>Next.js API Routes (本项目使用)</li>
+                        <li>Express.js (传统后端)</li>
+                        <li>RESTful API 设计</li>
+                        <li>中间件概念</li>
+                    </ul>
+                </div>
+
+                <div class="learning-step" data-step="3">
+                    <h4>第三阶段：数据库技能</h4>
+                    <ul>
+                        <li>SQL 基础 (SELECT/INSERT/UPDATE/DELETE)</li>
+                        <li>表设计与关系</li>
+                        <li>索引与性能优化</li>
+                        <li>PostgreSQL (本项目使用)</li>
+                    </ul>
+                </div>
+
+                <div class="learning-step" data-step="4">
+                    <h4>第四阶段：认证与安全</h4>
+                    <ul>
+                        <li>认证方式 (Session/JWT/OAuth)</li>
+                        <li>密码加密 (bcrypt)</li>
+                        <li>XSS/CSRF/SQL注入 防护</li>
+                    </ul>
+                </div>
+
+                <div class="learning-step" data-step="5">
+                    <h4>第五阶段：部署与运维</h4>
+                    <ul>
+                        <li>Docker 容器化</li>
+                        <li>CI/CD 流程</li>
+                        <li>日志与监控</li>
+                        <li>性能优化</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <h3 style="margin-bottom: 20px;">本项目涉及的全栈知识点</h3>
+
+            <div class="code-block">
+                <pre>
+<span class="code-comment">// API Route 基本结构</span>
+<span class="code-keyword">export async function</span> <span class="code-function">POST</span>(req: NextRequest) {
+  <span class="code-keyword">const</span> body = <span class="code-keyword">await</span> req.<span class="code-function">json</span>();
+
+  <span class="code-comment">// 验证输入</span>
+  <span class="code-keyword">if</span> (!body.name) {
+    <span class="code-keyword">return</span> NextResponse.<span class="code-function">json</span>(
+      { success: <span class="code-keyword">false</span>, error: <span class="code-string">'Name is required'</span> },
+      { status: <span class="code-type">400</span> }
+    );
+  }
+
+  <span class="code-comment">// 业务逻辑</span>
+  <span class="code-keyword">const</span> result = <span class="code-keyword">await</span> <span class="code-function">createItem</span>(body);
+
+  <span class="code-keyword">return</span> NextResponse.<span class="code-function">json</span>({ success: <span class="code-keyword">true</span>, data: result });
+}
+                </pre>
+            </div>
+
+            <div class="code-block">
+                <pre>
+<span class="code-comment">// 数据库操作 (Supabase)</span>
+<span class="code-keyword">const</span> { data, error } = <span class="code-keyword">await</span> supabase
+  .<span class="code-function">from</span>(<span class="code-string">'user_pdfs'</span>)
+  .<span class="code-function">select</span>(<span class="code-string">'*'</span>)
+  .<span class="code-function">eq</span>(<span class="code-string">'user_id'</span>, userId)
+  .<span class="code-function">order</span>(<span class="code-string">'created_at'</span>, { ascending: <span class="code-keyword">false</span> });
+                </pre>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer style="text-align: center; padding: 40px 20px; color: white;">
+            <p>Agent-PDF 项目架构文档 | 生成于 2024</p>
+            <p style="opacity: 0.7; margin-top: 10px;">
+                基于实际代码分析生成，供学习和参考使用
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Navigation smooth scroll
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                    // Update active state
+                    document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+
+                // Update tab active state
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Update content visibility
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Intersection Observer for nav highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.nav a');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === '#' + entry.target.id) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { threshold: 0.3 });
+
+        sections.forEach(section => observer.observe(section));
+    </script>
+</body>
+</html>
